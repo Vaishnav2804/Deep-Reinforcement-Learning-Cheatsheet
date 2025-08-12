@@ -1,12 +1,16 @@
-\documentclass{article}
-\usepackage[margin=1in]{geometry}
+\documentclass[12pt]{article}
+\usepackage[margin=0.5in]{geometry}
 \usepackage{amsmath}
 \usepackage{amsfonts}
 \usepackage{amssymb}
 \usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{xcolor}
 
-\title{Reinforcement Learning Cheatsheet}
-\author{Generated from Lecture Notes for CSCI 6904 (Deep Reinforcement Learning) - 2025 Summer}
+
+\title{Reinforcement Learning Notes}
+\author{Generated from Lecture Notes for CSCI 6904 (Deep Reinforcement Learning)}
 \date{\today}
 
 
@@ -69,7 +73,13 @@ Prediction of expected return.
 \begin{itemize}
     \item State-value: $v_\pi(s) = \mathbb{E}_\pi[G_t \mid S_t = s] = \mathbb{E}_\pi[\sum_{k=0}^\infty \gamma^k R_{t+k+1} \mid S_t = s]$.
     \item Action-value (Q-function): $q_\pi(s,a) = \mathbb{E}_\pi[G_t \mid S_t = s, A_t = a]$.
+
 \end{itemize}
+    If we represent  $V_\pi(s)$ in terms of Q value, then:
+
+    $$
+    V_\pi(s) = \sum_a \pi(a|s) Q_\pi(s,a) ]
+    $$
 
 \subsubsection*{Bellman Equation}
 
@@ -79,6 +89,9 @@ For a policy $\pi$ (state-value form):
 $$
 V_\pi(s) = \sum_a \pi(a|s) \sum_{s'} P(s'|s,a) [ R(s,a,s') + \gamma V_\pi(s') ]
 $$
+
+
+
 Meaning:
 \begin{itemize}
     \item Weight actions by policy probability.
@@ -86,7 +99,7 @@ Meaning:
     \item Add immediate reward + discounted future value.
 \end{itemize}
 
-\subsection*{Optimal Value Function}
+\subsection{Optimal Value Function}
 For optimal $V_*(s)$:
 $$
 V_*(s) = \max_a \sum_{s'} P(s'|s,a) [ R(s,a,s') + \gamma V_*(s') ]
@@ -116,7 +129,7 @@ Once we have the optimal value function $V_*$, the optimal policy $\pi_*$ can be
 $$
 \pi_*(s) = \arg\max_a \sum_{s'} P(s'|s,a) \big[ R(s,a,s') + \gamma V_*(s') \big]
 $$
-\subsection*{Recap}
+\subsection{Recap}
 \begin{itemize}
     \item Bellman expectation: value = average reward + average future value under $\pi$.
     \item Bellman optimality: value = best reward + best future value possible.
@@ -211,7 +224,7 @@ This approach differs from Supervised Learning (SL) Maximum Likelihood in that t
 
 \subsection{Objective}
 The objective is to maximize the expected return from a starting state, which is equivalent to the state-value function:
-$$ J(\theta) = \mathbb{E}_{\pi_\theta}[G_t \mid S_t = s] = v_{\pi_\theta}(s) $$
+$$ J(\theta) = \mathbb{E}_{\pi_\theta}[G_t \mid S_t = s_0] = v_{\pi_\theta}(s_0) $$
 
 \subsection{Policy Gradient Theorem}
 The policy gradient theorem provides a way to compute the gradient of the objective function:
@@ -293,7 +306,11 @@ RLHF leverages policy gradients to refine the model's behavior based on human in
     \item \textbf{Reward Model Training}: A separate reward model, $r_\psi(s,a)$, is trained to predict the human preference score for any response, learning from the collected rankings.
     \item \textbf{Policy Update}: The policy is updated using a policy gradient algorithm with the reward signal from the reward model. A simplified update rule is:
     $$ \nabla_\theta J(\theta) \approx \frac{1}{N} \sum_{i=1}^N \nabla_\theta \log \pi_\theta(A_i | S_i) r(S_i, A_i) $$
-    \item \textbf{Off-Policy Considerations}: To improve sample efficiency, off-policy methods with importance sampling are used. A \textbf{KL-divergence penalty} is also added to the objective function to prevent the new policy from deviating too drastically from the reference policy, thus maintaining model stability and preventing reward hacking.
+
+    \item \textbf{Over Optimization in Dialog systems:}
+    $J(\theta) = \mathbb{E}_{\pi_{\theta}}[r] - \beta D_{KL}(\pi_{\theta}||\pi_{\beta})$
+    
+    \item \textbf{Off-Policy Considerations}: To improve sample efficiency, off-policy methods with importance sampling are used. A \textbf{KL-divergence penalty} is also added to the loss function to prevent the new policy from deviating too drastically from the reference policy, thus maintaining model stability and preventing reward hacking.
 \end{enumerate}
 
 \section{Actor-Critic Methods }
@@ -333,9 +350,13 @@ Actor-Critic methods combine a policy network (the \textbf{actor}) with a value 
 The critic is used to bootstrap, providing a value estimate to guide the actor.
 
 \subsubsection{Advantage Actor-Critic}
-This approach uses the \textbf{advantage function} as the critic's signal to the actor. \textbf{The advantage function measures how much better an action is compared to the average for that state.}
+This approach uses the \textbf{advantage function} as the critic's signal to the actor. \textbf{The advantage function, $A^{\pi}(s,a)$, measures how much better a specific action $a$ is compared to the expected value of the state, $V^{\pi}(s)$.}
 \begin{itemize}
-    \item \textbf{Advantage function}: $A(s,a) = q_\pi(s,a) - v_\pi(s)$.
+    \item \textbf{Advantage function}:
+    $A^\pi(s,a) = Q^\pi(s,a) - V^\pi(s)$ \\
+    
+     or using the Bellman equation:
+    $A^\pi(s,a) = r + \gamma V^\pi(s') - V^\pi(s)$
     \item \textbf{Advantage estimate}: A common way to estimate the advantage is with the Temporal-Difference (TD) error:
     $$ \hat{A}(S_t, A_t) = R_{t+1} + \gamma \hat{v}_w(S_{t+1}) - \hat{v}_w(S_t) $$
     This is an estimate of how much the reward was better (or worse) than expected.
@@ -388,8 +409,12 @@ This algorithm trains both the actor and the critic networks simultaneously usin
     \item Stop when values stop changing much
 \end{enumerate}
 
-\subsection{Policy Iteration (Control)}
-This algorithm finds an optimal policy $\pi^*$ (the best actions to take in each state) and its corresponding optimal value function $V^*$. It operates by alternating between evaluating the current policy and improving it, a process known as policy iteration.\\
+\subsection{Policy Iteration (Control)} 
+This algorithm finds an optimal policy $\pi^*$ (the best actions to take in each state) and its corresponding optimal value function $V^*$. \\
+
+\textit{PolicyIteration = Policy Evaluation + Policy Improvement}  (This is done iteratively)\\
+
+It operates by alternating between evaluating the current policy and improving it, a process known as policy iteration.\\
 
 \textbf{Why it is useful:}
 Policy iteration is a control method, not just a prediction one. Its goal is to find the best possible strategy to maximize long-term rewards, making it a foundational algorithm for solving control problems in reinforcement learning.\\ \\
@@ -416,18 +441,73 @@ Value Iteration is a control method: it not only predicts but also finds the bes
     \item Once converged, get Optimal policy: $\pi^*(s) = \arg\max_a \sum_{s',r} p(s',r|s,a) [r + \gamma v^*(s')]$.
 \end{itemize}
 
+\section{Asynchronous Dynamic Programming}
+
+\subsection{Synchronous Dynamic Programming}
+\begin{itemize}
+    \item All states are \textbf{updated in parallel} at each iteration.
+    \item Example: \textbf{Value Iteration}.
+    \item For all $s \in S$:
+        $$
+        v_{k+1}(s) = \max_{a} \sum_{s',r} p(s',r|s,a)\big[r + \gamma v_k(s')\big]
+        $$
+    \item Each $v_{k+1}(s)$ update uses the previous $v_k(s')$ values.
+\end{itemize}
+
+\subsection{Asynchronous Dynamic Programming}
+\begin{itemize}
+    \item States can be \textbf{updated in any order}, possibly one at a time.
+    \item Does not require full-sweep of all states per iteration.
+    \item \textbf{Converges} as long as all states continue to be selected for updates.
+\end{itemize}
+
+\subsubsection{In-Place Dynamic Programming}
+\begin{itemize}
+    \item Use the latest available values for $v(s)$ during updates, not just those from previous iteration.
+    \item For all $s \in S$:
+        $$
+        v(s) \leftarrow \max_{a} \sum_{s',r} p(s',r|s,a)[r + \gamma v(s')]
+        $$
+\end{itemize}
+
+\subsubsection{Prioritized Sweeping}
+\begin{itemize}
+    \item Prioritize updates for states with largest Bellman error.
+    \item Leads to faster convergence by focusing computation on relevant parts of the state space.
+\end{itemize}
+
+\subsubsection{Real-Time Dynamic Programming}
+\begin{itemize}
+    \item Updates guided by agent's actual experience.
+    \item Utilizes the environment's feedback to steer which states are updated.
+    \item Helps agent focus learning on states most relevant to its current task.
+\end{itemize}
+
+% Sample pseudocode for Asynchronous DP
+\subsubsection*{Pseudocode: Asynchronous Value Iteration}
+\begin{verbatim}
+for iteration k = 1..K:
+    for each selected state s (order may vary):
+        v(s) ← max_a Σ_{s', r} p(s', r | s, a) [r + γ v(s')]
+\end{verbatim}
+
+
 \section{Model-Free Prediction }
 
 \subsection{Monte-Carlo (MC) Learning}
 \begin{itemize}
     \item Learn $v_\pi(s) = \mathbb{E}_\pi[G_t \mid S_t = s]$.
-    \item Update: $V(s) \leftarrow V(s) + \alpha (G_t - V(s))$.
-    \item Incremental: $N(s) \leftarrow N(s) + 1$; $V(s) \leftarrow V(s) + \frac{1}{N(s)}(G_t - V(s))$.
+    \item MC Update: $V(s) \leftarrow V(s) + \alpha (G_t - V(s))$.
+    \item Incremental: $N(s) \leftarrow N(s) + 1$; Where \textit{N(s)} is the total number of visits to state s so far (i.e., a state-visitation count)\\ 
+    $V(s) \leftarrow V(s) + \frac{1}{N(s)}(G_t - V(s))$.
 \end{itemize}
 
 \subsection{Temporal-Difference (TD(0)) Learning}
 \begin{itemize}
-    \item Update: $V(S_t) \leftarrow V(S_t) + \alpha (R_{t+1} + \gamma V(S_{t+1}) - V(S_t))$.
+    \item Update: $V(S_t) \leftarrow V(S_t) + \alpha (R_{t+1} + \gamma V(S_{t+1}) - V(S_t)$.\\
+    Where :
+    $$TD.error = R_{t+1} + \gamma V(S_{t+1}) - V(S_t)$$
+    $$Target = (R_{t+1} + \gamma V(S_{t+1})$$
     \item TD error: $\delta_t = R_{t+1} + \gamma V(S_{t+1}) - V(S_t)$.
 \end{itemize}
 
@@ -437,35 +517,144 @@ Value Iteration is a control method: it not only predicts but also finds the bes
     \item Update: $V(S_t) \leftarrow V(S_t) + \alpha (G_{t:t+n} - V(S_t))$.
 \end{itemize}
 
+\section{Unified View}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.5\linewidth]{images/unified_view.png}
+    \caption{Unified View}
+    \label{fig:placeholder}
+\end{figure}
+
+\textbf{What do ``depth" and ``width" mean?}
+
+\textbf{Depth (length of update):}
+Refers to how far into the future each update looks.
+\begin{itemize}
+    \item \textbf{Short depth:} Update uses immediate next state (e.g., TD learning).
+    \item \textbf{Long depth:} Update could use entire episode or tree (e.g., Monte Carlo, exhaustive search).
+\end{itemize}
+
+\textbf{Width (branching in update):}
+How many alternative actions or transitions are considered in each update.
+\begin{itemize}
+    \item \textbf{Narrow width:} Single trajectory or outcome (e.g., real experience).
+    \item \textbf{Wide width:} All possible actions/states (e.g., dynamic programming, exhaustive search).
+\end{itemize}
+
+\section{TD($\lambda$): Simple Example with $\lambda=1/2$}
+
+\subsection{Idea}
+\begin{itemize}
+    \item TD($\lambda$) averages several $n$-step returns, with weights $\lambda^{n-1}$.
+    \item When $\lambda=0$: Only uses 1-step TD (TD(0)).
+    \item When $\lambda=1$: Uses full return (Monte Carlo).
+    \item At $\lambda=1/2$: Each longer return is included but weighted less: 1-step gets $1/2^0=1$; 2-step gets $1/2^1=0.5$; 3-step $1/2^2=0.25$, etc.
+\end{itemize}
+
+\subsection{Easy Example}
+Suppose an episode starts in state $S_0$, and we observe:  
+$R_1=2$, $R_2=3$, $R_3=4$, $\gamma=1$ (no discount), and $V(S_3) = 0$ (terminal).
+
+\textbf{Possible returns:}
+\begin{align*}
+\text{1-step:}\quad & G_1^{(1)} = R_1 + V(S_1) \\
+\text{2-step:}\quad & G_1^{(2)} = R_1 + R_2 + V(S_2) \\
+\text{3-step:}\quad & G_1^{(3)} = R_1 + R_2 + R_3 + V(S_3)
+\end{align*}
+
+But let's say $V(S_1)=V(S_2)=V(S_3)=0$ for simplicity.
+
+So:  
+\begin{align*}
+G_1^{(1)} = 2 \\
+G_1^{(2)} = 2+3=5 \\
+G_1^{(3)} = 2+3+4=9
+\end{align*}
+
+\textbf{TD($\lambda$) average for $\lambda=1/2$:}
+\begin{align*}
+G_1^{(\lambda)} &= (1 - \lambda) \left[G_1^{(1)} + \lambda G_1^{(2)} + \lambda^2 G_1^{(3)} + \cdots \right] \\
+&= (1-0.5)\left[2 + 0.5 \times 5 + 0.25 \times 9\right] \\
+&= 0.5 \left[2 + 2.5 + 2.25 \right] \\
+&= 0.5 \times 6.75 = 3.375
+\end{align*}
+
+\textbf{Interpretation:}  
+With $\lambda=1/2$, TD($\lambda$) mixes short and long returns:
+- Gives most weight to 1-step (TD), some to 2-step, less to 3-step, etc.
+- This offers a balance between quickly updated, low-variance estimates and longer-term, low-bias returns.
+
+\begin{table}[h!]
+\centering
+\caption{Summary of TD($\lambda$) returns and weights}
+\label{tab:td-lambda}
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{$n$-step Return} & \textbf{Weight ($\lambda^{n-1}$)} & \textbf{Included Value} \\
+\hline
+1-step & $1$ & $2$ \\
+2-step & $0.5$ & $5$ \\
+3-step & $0.25$ & $9$ \\
+\hline
+\end{tabular}
+\end{table}
+
+TD($\lambda=1/2$) = $0.5 \times (2 + 2.5 + 2.25) = 3.375$
+
+This shows how TD($\lambda$) blends multiple returns, with the influence tailing off for longer returns as $\lambda$ gets smaller.
+
+
 \section{Model-Free Control}
 We consider a Markov Decision Process (MDP) with a finite state space $\mathcal{S}$, action space $\mathcal{A}$, transition kernel $p(s',r \mid s,a)$, and a discount factor $\gamma \in [0, 1)$. The goal of control is to find an optimal policy $\pi^\star$ that maximizes the expected discounted return. All methods below learn an action-value function $Q(s,a)$ directly from experience without an explicit model of the environment's dynamics.
 
 \subsection{On-Policy Monte Carlo (MC) Control}
-Monte Carlo control improves a policy using complete returns from sampled episodes while following (approximately) the same policy it evaluates.
 
-\subsubsection*{Policy}
-We use an $\epsilon$-greedy policy with respect to the current $Q$-function:
-$$
-\pi(a \mid s) =
-\begin{cases}
-1 - \epsilon + \dfrac{\epsilon}{|\mathcal{A}(s)|}, & \text{if } a \in \arg\max_{b} Q(s,b), \\
-\dfrac{\epsilon}{|\mathcal{A}(s)|}, & \text{otherwise.}
-\end{cases}
-$$
+Monte Carlo (MC) control improves a policy using returns from complete sampled episodes, following the policy it is evaluating (typically with $\epsilon$-greedy exploration).
 
-\subsubsection*{Target}
-For a time step $t$ within an episode, the return is calculated as:
-$$
-G_t = \sum_{k=0}^{T-t-1} \gamma^k R_{t+1+k},
-$$
-where $T$ is the terminal time step.
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.5\linewidth]{epsilon_greedy.png}
+    \caption{Enter Caption}
+    \label{fig:placeholder}
+\end{figure}
 
-\subsubsection*{Incremental Update}
-With a constant stepsize $\alpha \in (0,1]$, the stochastic approximation update is:
-$$
-Q(S_t, A_t) \leftarrow Q(S_t, A_t) + \alpha \bigl(G_t - Q(S_t, A_t)\bigr).
-$$
-(With tabular, first-visit MC you may also use running averages.)
+\subsubsection{Concept:}
+\begin{itemize}
+    \item The agent interacts with the environment using an $\epsilon$-greedy policy for exploration.
+    \item After each episode, it computes the returns $G_t$ for each state-action pair $(S_t, A_t)$.
+    \item Updates action-value estimates $Q(S_t, A_t)$ using the averages of observed returns.
+    \item The policy is updated to be greedy w.r.t. current $Q$ (or remains $\epsilon$-greedy for continued exploration).
+\end{itemize}
+
+\textbf{Algorithm Outline:}
+\begin{enumerate}
+    \item Initialize $Q(s,a)$ arbitrarily, $\pi$ as $\epsilon$-greedy w.r.t.\ $Q$.
+    \item For each episode:
+    \begin{enumerate}
+        \item Generate episode following $\pi$.
+        \item For every $(S_t, A_t)$ pair in episode:
+        \begin{itemize}
+            \item Compute return $G_t$ from $t$ to episode end.
+            \item Store all occurrences of $(S_t, A_t)$.
+            \item Average all observed returns $G_t$ for $(S_t, A_t)$:
+                $$
+                Q(S_t, A_t) \leftarrow \text{average of all returns} \; G_t \text{ for } (S_t, A_t)
+                $$
+            \item Improve policy: Set $\pi$ to be $\epsilon$-greedy w.r.t.\ new $Q$.
+        \end{itemize}
+    \end{enumerate}
+\end{enumerate}
+
+
+\textbf{Key Points:}
+\begin{itemize}
+    \item No bootstrapping—uses actual returns (Monte Carlo).
+    \item Must visit all state-action pairs infinitely often (usually with $\epsilon$-greedy).
+    \item Resulting $Q$ converges to optimal values as episodes accumulate.
+    \item Policy is continually improved as action-value estimates become more accurate.
+\end{itemize}
+
 
 \subsubsection*{Control Loop (GLIE in practice)}
 Repeatedly:
@@ -474,7 +663,7 @@ Repeatedly:
     \item For each visited state-action pair $(S_t,A_t)$, compute $G_t$ and update $Q$ as described above.
     \item Improve $\pi$ to be $\epsilon$-greedy with respect to the updated $Q$.
 \end{enumerate}
-To ensure convergence (in tabular finite MDPs), use GLIE (greedy in the limit with infinite exploration), e.g., $\epsilon_k \downarrow 0$ but $\sum_k \epsilon_k = \infty$.
+To ensure convergence (in tabular finite MDPs), use GLIE (greedy in the limit with infinite exploration), e.g., $\epsilon_k \downarrow 0$ but $\sum_k \epsilon_k = \infty$. ($\epsilon$ will be decrease, and at infinity $\epsilon$ will be 0, so it will be acting greedy. So to ensure exploration, you need to set epsilon in such a way that sum of all epsilons is equal to $\infty$).
 
 \subsubsection*{Notes}
 \begin{itemize}
@@ -564,7 +753,7 @@ At each time $t$, an update for a prior time step $\tau = t - n + 1$ is performe
     \item Backward-view equivalents use eligibility traces (e.g., Sarsa($\lambda$)) to implement an exponentially weighted average over different values of $n$.
 \end{itemize}
 
-\subsection*{Practical Considerations (All Methods)}
+\subsection{Practical Considerations (All Methods)}
 \begin{itemize}
     \item \textbf{Initialization:} Optimistic $Q_0$ values can encourage exploration.
     \item \textbf{Stepsize:} A constant $\alpha$ is good for nonstationary settings, while a diminishing $\alpha_t$ (e.g., Robbins--Monro) supports convergence proofs.
@@ -573,7 +762,7 @@ At each time $t$, an update for a prior time step $\tau = t - n + 1$ is performe
     \item \textbf{Continuous actions:} The `max` operator in Q-learning is difficult; consider actor-critic or deterministic policy gradient methods instead.
 \end{itemize}
 
-\subsection*{Algorithm Boxes (Tabular)}
+\subsection{Algorithm Boxes (Tabular)}
 \paragraph{On-Policy MC Control (Every-Visit, Incremental)}
 \begin{enumerate}
     \item Initialize $Q(s,a)$ arbitrarily; choose $\epsilon \in (0,1)$, $\alpha \in (0,1]$.
@@ -647,14 +836,14 @@ At each time $t$, an update for a prior time step $\tau = t - n + 1$ is performe
     \end{enumerate}
 \end{enumerate}
 
-\subsection*{Conceptual Differences Summary}
+\subsection{Conceptual Differences Summary}
 \begin{itemize}
     \item \textbf{Target:} MC uses the full return $G_t$; Sarsa uses a one-step bootstrapped target $R_{t+1}+\gamma Q(S_{t+1},A_{t+1})$; Q-learning uses a max-operator bootstrapped target $R_{t+1}+\gamma \max_{a'}Q(S_{t+1},a')$; $n$-step Sarsa uses an intermediate $n$-step return $G_{t:t+n}$.
     \item \textbf{On- vs Off-Policy:} MC control and Sarsa are on-policy; Q-learning is off-policy.
     \item \textbf{Bias/Variance:} MC has low bias but high variance; TD methods have more bias but lower variance. The $n$-step methods provide a spectrum to balance this trade-off by adjusting the step size $n$.
 \end{itemize}
 
-\section{Deep Q-Networks (DQN) }
+\section{Deep Q-Networks and DDQN (DQN) }
 
 \subsection{Deep Q-Learning}
 \begin{itemize}
@@ -677,12 +866,43 @@ At each time $t$, an update for a prior time step $\tau = t - n + 1$ is performe
             \item Sample a mini-batch $\{(s_i,a_i,r_i,s_i',d_i)\}_{i=1}^N$ from $\mathcal{B}$.
             \item Compute targets: $y_i = r_i + \gamma (1-d_i)\,\max_{a'} Q(s_i',a'; w^-)$.
             \item Update $w$ by minimizing $L(w)=\frac{1}{N}\sum_i \big(y_i - Q(s_i,a_i;w)\big)^2$ (often Huber loss).
-            \item Every $K$ steps: update target, e.g., hard $w^- \leftarrow w$ or soft $w^- \leftarrow \tau w^- + (1-\tau)w$.
+            \item Every $N$ steps: update target, e.g., hard $w^- \leftarrow w$ or Every $K$ steps soft $w^- \leftarrow \tau w^- + (1-\tau)w$.
             \item Optionally anneal $\epsilon$; $t \leftarrow t+1$; $s_t \leftarrow s_{t+1}$.
         \end{enumerate}
     \end{enumerate}
 \end{enumerate}
 
+
+
+\subsection{Double DQN: Steps}
+
+\begin{enumerate}
+    \item \textbf{Store transition:} Take action $A_t$, store $(S_t, A_t, R_{t+1}, S_{t+1})$ in the replay buffer $B$.
+    \item \textbf{Sample mini-batch:} Randomly pick a mini-batch of transitions $\{(S, A, R, S')\}$ from $B$.
+    \item \textbf{Calculate target:}
+    \begin{itemize}
+        \item \textbf{DQN target:} $y_i = R_{i+1} + \gamma \hat{q}_{w^-}(S_{i+1}, \arg\max_{a'} \hat{q}_{w}(S_{i+1}, a'))$
+        \item \textbf{Double DQN target:} $y_i = R_{i+1} + \gamma \hat{q}_{w^-}(S_{i+1}, \arg\max_{a'} \hat{q}_{w}(S_{i+1}, a'))$
+    \end{itemize}
+    \item \textbf{Calculate loss:} $L(w) = \sum_i (y_i - \hat{q}(S_i, A_i, w))^2$
+    \item \textbf{Update weights:} Adjust $w$ to minimize $L(w)$.
+    \item \textbf{Target network update:} Set $w^- \leftarrow w$ every $N$ steps.
+\end{enumerate}
+
+\textbf{Alternative target network update:}\quad $w^- \leftarrow \tau w^- + (1 - \tau)w, \quad\ \text{e.g.,}\ \tau = 0.999$ every step.
+
+\subsection{Prioritized Experience Replay Steps}
+
+\begin{enumerate}
+    \item \textbf{Store transition:} Take action $A_t$, and store $(S_t, A_t, R_{t+1}, S_{t+1})$ in replay buffer $B$ with maximal priority $p_t = \max_i p_i$.
+    \item \textbf{Sample mini-batch:} Sample transitions from $B$ using prioritized experience replay: probability $P(j) = \frac{p_j^\alpha}{\sum_i p_i^\alpha}$
+    \item \textbf{Importance-sampling:} Compute weight $\lambda_i = \left( \frac{1}{N P(i)} \right)^\beta / \max_i \lambda_i$
+    \item \textbf{Update priority:} Set $p_j \leftarrow |\delta_j| + \varepsilon$ for sampled transitions.
+    \item \textbf{Calculate target:} $y_i = R_{i+1} + \gamma \hat{w}^- (S_{i+1}, \arg\max_{a'} \hat{w}(S_{i+1}, a'))$
+    \item \textbf{Calculate loss:} $L(w) = \sum_i \lambda_i (y_i - \hat{q}(S_i, A_i, w))^2$
+    \item \textbf{Update $w$:} Minimize $L(w)$ and update network parameters.
+    \item \textbf{Update target network:} $w^- \leftarrow \tau w^- + (1-\tau)w$ every step.
+\end{enumerate}
 
 \subsection{Improvements to DQN}
 \begin{itemize}
@@ -691,11 +911,68 @@ At each time $t$, an update for a prior time step $\tau = t - n + 1$ is performe
     \item \textbf{Multi-step Returns}: $y_i = \sum_{k=1}^n \gamma^{k-1} r_{i+k} + \gamma^n \max_{a'} Q(s_{i+n}', a'; w^-)$.
 \end{itemize}
 
+\subsubsection{Why N-step Returns Don't Work Simply in DQN}
+
+\textbf{Only actually correct when learning on-policy.}
+Let's assume the experience replay buffer (ERB) contains a sequence of transitions:
+\[
+\{ (S_t, A_t, R_{t+1}, S_{t+1}, A_{t+1}, R_{t+2}, S_{t+2}), \dots \}
+\]
+This sequence was collected using an $\epsilon$-greedy behavior policy.
+
+For a single-step return, the tuple $(S_t, A_t, R_{t+1}, S_{t+1})$ can be safely used. The reward $R_{t+1}$ is determined entirely by the environment and does not depend on the specific Q-network that generated the action $A_t$.\\
+
+However, for an N-step return, we also need the subsequent actions, such as $A_{t+1}$, from state $S_{t+1}$. In standard Deep Q-Networks (DQN), the target is computed using the target network, specifically with $\max_{a'} Q_{\text{target}}(S', a')$, not the action actually taken by the behavior policy.\\
+
+If we directly use $A_{t+1}$ from the Experience Replay Buffer, we are implicitly assuming that it was chosen according to the target network's policy. In reality, $A_{t+1}$ was selected by the older behavior policy. Since the Q-network parameters may have changed significantly since that transition was collected, \textbf{this assumption is incorrect and introduces an off-policy bias into the N-step return calculation}.\\
+
+
+\textbf{Simple example:} 
+\begin{itemize}
+    \item Step 1: Agent uses policy $\pi_1$ (old) to generate transition
+    \item Step 2: Agent uses policy $\pi_2$ (newer) to generate next transition  
+    \item Step 3: We sample both from replay buffer and compute n-step return
+    \item \textbf{Problem:} N-step assumes single policy, but we mixed $\pi_1$ and $\pi_2$!
+\end{itemize}
+
+\textbf{Solution:} 
+\begin{itemize}
+    \item Ignore the problem – often works very well for DQN.
+    \item Collect transitions $\{S, A, R, S', A', R', S''\}$ and keep the n-step trace only if the target network’s action for $S'$ (and for any subsequent states) matches the recorded actions; otherwise, cut the trace.
+    \item Importance sampling
+\end{itemize}
+
+\textbf{Key insight:} Actor-critic learns from fresh on-policy data. DQN learns from mixed old/new off-policy data stored in replay buffer.
+
+
 \section{Continuous Control with Q-Learning }
+
+\subsection{Why DQN Fails for Continuous Actions}
+
+\textbf{Problem:} DQN is designed for \textbf{discrete action spaces}.
+
+\begin{enumerate}
+    \item \textbf{Q-value maximization:} DQN requires computing $\max_a Q(s, a)$ over all possible actions $a$. For continuous actions, this would mean searching an \emph{infinite} number of actions—impractical to compute or represent exactly.
+
+    \item \textbf{Action selection:} The neural network output must be one value per action. In continuous control, there are infinitely many actions, so mapping actions to outputs is not feasible.
+
+    \item \textbf{Argmax not tractable:} For continuous actions, finding the action $a$ that maximizes $Q(s, a)$ is a complex optimization problem, not just selecting the highest output.
+\end{enumerate}
+
+\textbf{Conclusion:} DQN cannot be directly applied for environments where the action space is continuous. Instead, algorithms like DDPG or SAC are used for such cases.
 
 \subsection{Action Discretization}
 \begin{itemize}
     \item Discretize continuous actions into bins (e.g., 10 bins per dimension).
+\end{itemize}
+
+\subsubsection{Random Shooting Method For DQN}
+
+\begin{itemize}
+    \item Randomly sample $N$ possible continuous actions $\{a_1, a_2, \dots, a_N\}$.
+    \item Evaluate each action using $Q$-function: $\hat{q}_w(s, a_i)$.
+    \item Pick the action with the highest value: $\max_i \hat{q}_w(s, a_i)$ $\varepsilon$ greedy times and put them into the Experience Replay Buffer.
+    \item As $N$ increases, the approximation to the optimal action improves.
 \end{itemize}
 
 \subsection{Stochastic Optimization (CEM)}
@@ -707,14 +984,105 @@ At each time $t$, an update for a prior time step $\tau = t - n + 1$ is performe
     \item Best action: $\arg\max_a Q(s,a) \approx$ elite mean or max.
 \end{enumerate}
 
-\subsection{Deep Deterministic Policy Gradient (DDPG)}
+\subsection{Deep Deterministic Policy Gradient (DDPG) Notes}
+
 \begin{itemize}
-    \item Actor: $\mu(s; \theta) \approx \arg\max_a Q(s,a; w)$.
-    \item Critic update: $L(w) = \frac{1}{N} \sum_i (y_i - Q(s_i, \mu(s_i; \theta); w))^2$, where $y_i = r_i + \gamma Q(s_i'; \mu(s_i'; \theta^-); w^-)$.
-    \item Actor update: Maximize $J(\theta) = \frac{1}{N} \sum_i Q(s_i, \mu(s_i; \theta); w)$.
-    \item Exploration: $a_t = \mu(s_t; \theta) + \mathcal{N}_t$.
-    \item Soft target updates: $\theta^- \leftarrow \tau \theta^- + (1-\tau) \theta$, and similarly for $w^-$.
+    \item DDPG is an \textbf{actor-critic} method for handling \textbf{continuous action spaces}.
+    \item The \textbf{actor network} $\mu_\theta$ outputs the best action for a given state $S$. It is called the critic network because now the objective is to maximize the critic. 
+    \item The \textbf{critic network} $Q_w(S,A)$ estimates the action-value function.
+    \item The network has two parts: an \textbf{actor} $\mu(s)$ and a \textbf{critic} $Q(s,a)$.
 \end{itemize}
+
+
+\subsubsection{Pseudocode}
+\begin{enumerate}
+    \item Initialize actor and critic networks $\mu$ and $Q$ with parameters $\theta$ and $w$.
+    \item Initialize target networks $\mu'$ and $Q'$ with parameters $\theta' \leftarrow \theta$ and $w' \leftarrow w$.
+    \item Initialize replay buffer $\mathcal{B}$.
+    \item For each episode:
+    \begin{enumerate}
+        \item Initialize a random process $\mathcal{N}$ for exploration.
+        \item Receive initial state $S$.
+        \item For $t=1, T$:
+        \begin{enumerate}
+            \item Select action $A = \mu_\theta(S) + \mathcal{N}_t$.
+            \item Execute action $A$ and observe new state $S'$ and reward $R$.
+            \item Store transition $(S, A, R, S')$ in $\mathcal{B}$.
+            \item Sample a random minibatch of $N$ transitions from $\mathcal{B}$.
+            \item For each sampled transition $(S_i, A_i, R_i, S'_i)$, calculate the target value:
+            \[
+                y_i = R_i + \gamma Q_{w'}(S'_i, \mu_{\theta'}(S'_i))
+            \]
+            \item Update the critic network by minimizing the loss:
+            \[
+                L(w) = \frac{1}{N} \sum_i (y_i - Q_w(S_i, A_i))^2
+            \]
+            \item Update the actor network using the sampled policy gradient:
+            \[
+                \nabla_{\theta} J \approx \frac{1}{N} \sum_i \nabla_A Q_w(S_i, A)|_{A=\mu_\theta(S_i)} \nabla_\theta \mu_\theta(S_i)
+            \]  -- Now the objective is to maximize the critic. 
+            \item Soft update the target networks:
+            \[
+                w' \leftarrow \tau w + (1-\tau)w'
+            \]
+            \[
+                \theta' \leftarrow \tau \theta + (1-\tau)\theta'
+            \]
+        \end{enumerate}
+    \end{enumerate}
+\end{enumerate}
+
+\subsection{TD3  - (Not needed for exam)}
+\textbf{Twin Delayed Deep Deterministic Policy Gradient} \\ \\
+\textbf{Key Idea:}
+TD3 = DDPG + 3 stability fixes to reduce overestimation bias.
+
+\begin{enumerate}
+    \item \textbf{Twin Critics:} Use $Q_{\theta_1}, Q_{\theta_2}$ and take:
+    \[
+    y = r + \gamma \min_{i=1,2} Q_{\theta_i'}(s', a')
+    \]
+    to avoid optimistic bias.
+    \item \textbf{Target Policy Smoothing:}  
+    Add small clipped noise to target action:
+    \[
+    a' = \pi_{\phi'}(s') + \epsilon, \quad \epsilon \sim \mathrm{clip}(\mathcal{N}(0,\sigma), -c, c)
+    \]
+    for smoother policies.
+    \item \textbf{Delayed Policy Updates:}  
+    Update actor \& targets every $d$ steps, letting critics learn first.
+\end{enumerate}
+
+\subsubsection{Algorithm (Simplified)}
+\begin{enumerate}
+    \item Init $Q_{\theta_1}, Q_{\theta_2}, \pi_{\phi}$, target networks $Q_{\theta_1'}, Q_{\theta_2'}, \pi_{\phi'}$, and replay buffer $\mathcal{B}$.
+    \item For each step:
+    \begin{enumerate}
+        \item Execute $a_t = \pi_\phi(s_t) + \text{exploration noise}$, store $(s_t, a_t, r_t, s_{t+1})$ in $\mathcal{B}$.
+        \item Sample minibatch from $\mathcal{B}$.
+        \item Compute target:
+        \[
+        y = r + \gamma \min_{i=1,2} Q_{\theta_i'}(s', \pi_{\phi'}(s') + \epsilon)
+        \]
+        \item Update critics by MSE to $y$.
+        \item If $t \bmod d = 0$:
+        \[
+        \nabla_{\phi} J(\phi) = \frac{1}{N} \sum Q_{\theta_1}(s, \pi_\phi(s))
+        \]
+        \[
+        \theta_i' \leftarrow \tau \theta_i + (1-\tau)\theta_i', \quad
+        \phi' \leftarrow \tau \phi + (1-\tau)\phi'
+        \]
+    \end{enumerate}
+\end{enumerate}
+
+\subsection{DDPG vs. TD3}
+\begin{tabular}{l|c|c}
+\textbf{Feature} & \textbf{DDPG} & \textbf{TD3} \\ \hline
+Critics & 1 & 2 (take min) \\
+Target smoothing & No & Yes \\
+Actor update frequency & Every step & Delayed (e.g. every 2) \\
+\end{tabular}
 
 
 \section{Offline Reinforcement Learning }
@@ -843,20 +1211,62 @@ This is a more modern approach that combines the benefits of actor-critic method
 \subsection{Deep Deterministic Policy Gradient (DDPG)}
 DDPG is an off-policy, actor-critic algorithm for continuous action spaces. It uses a deterministic policy $\mu_\theta(s)$ for acting, with added noise for exploration, $A_t = \mu_\theta(S_t) + \mathcal{N}_t$.
 
+\subsubsection{Pseudocode}
 \begin{enumerate}
-    \item Store transitions in a replay buffer $\mathcal{B}$.
-    \item Sample a mini-batch from $\mathcal{B}$.
-    \item \textbf{Critic Update}: The critic network is updated towards a target $y_i$ that uses a target policy $\mu_{\theta^-}$ and a target critic network $w^-$ to compute the next state's value.
-    $$ y_i = R_{i+1} + \gamma \hat{q}_{w^-}(S_{i+1}, \mu_{\theta^-}(S_{i+1})) $$
-    \item \textbf{Actor Update}: The actor is updated by maximizing the expected Q-value, essentially performing gradient ascent on the Q-function.
-    $$ \nabla_\theta J(\theta) \approx \frac{1}{N} \sum_i \nabla_\theta \hat{q}_w(S_i, \mu_\theta(S_i)) $$
-    \item \textbf{Soft Target Update}: The target networks $\theta^-$ and $w^-$ are updated softly.
+    \item Initialize actor and critic networks $\mu$ and $Q$ with parameters $\theta$ and $w$.
+    \item Initialize target networks $\mu'$ and $Q'$ with parameters $\theta' \leftarrow \theta$ and $w' \leftarrow w$.
+    \item Initialize replay buffer $\mathcal{B}$.
+    \item For each episode:
+    \begin{enumerate}
+        \item Initialize a random process $\mathcal{N}$ for exploration.
+        \item Receive initial state $S$.
+        \item For $t=1, T$:
+        \begin{enumerate}
+            \item Select action $A = \mu_\theta(S) + \mathcal{N}_t$.
+            \item Execute action $A$ and observe new state $S'$ and reward $R$.
+            \item Store transition $(S, A, R, S')$ in $\mathcal{B}$.
+            \item Sample a random minibatch of $N$ transitions from $\mathcal{B}$.
+            \item For each sampled transition $(S_i, A_i, R_i, S'_i)$, calculate the target value:
+            \[
+                y_i = R_i + \gamma Q_{w'}(S'_i, \mu_{\theta'}(S'_i))
+            \]
+            \item Update the critic network by minimizing the loss:
+            \[
+                L(w) = \frac{1}{N} \sum_i (y_i - Q_w(S_i, A_i))^2
+            \]
+            \item Update the actor network using the sampled policy gradient:
+            \[
+                \nabla_{\theta} J \approx \frac{1}{N} \sum_i \nabla_A Q_w(S_i, A)|_{A=\mu_\theta(S_i)} \nabla_\theta \mu_\theta(S_i)
+            \]  -- Now the objective is to maximize the critic. 
+            \item Soft update the target networks:
+            \[
+                w' \leftarrow \tau w + (1-\tau)w'
+            \]
+            \[
+                \theta' \leftarrow \tau \theta + (1-\tau)\theta'
+            \]
+        \end{enumerate}
+    \end{enumerate}
 \end{enumerate}
 
 \section{Soft Actor-Critic (SAC) }
 
+\subsection{Quick analogy}
+\textbf{Standard RL:} ``I'll keep doing what seems best right now.'' \\
+\textbf{SAC:} ``I'll do what seems best on average, but keep some healthy randomness so I don't miss a better long-term strategy.''
+
 \subsection{Maximum Entropy Reinforcement Learning}
-SAC is an off-policy algorithm that aims to find a policy that not only maximizes the reward but also has high entropy. This encourages exploration and leads to more robust, stable policies.
+Instead of just maximizing reward, maximum entropy reinforcement learning adds an entropy bonus to the objective:
+$$
+J(\pi) = \mathbb{E} \left[ \sum_{t=0}^{\infty} \gamma^t \big( R_{t+1} + \alpha \ \mathcal{H}(\pi(\cdot|S_t)) \big) \right]
+$$
+Here, the entropy of the policy $\pi$ at state $S_t$ is defined as:
+$$
+\mathcal{H}(\pi(\cdot|S_t)) = -\sum_a \pi(a|S_t) \log \pi(a|S_t)
+$$
+Entropy measures the randomness in the policy's action choices. The parameter $\alpha$ is the temperature, which determines how much weight is given to the entropy bonus relative to the reward.
+
+SAC is a model-free, off-policy,actor-critic algorithm that aims to find a policy that not only maximizes the reward but also has high entropy. This encourages exploration and leads to more robust, stable policies.
 The objective function is augmented with an entropy term:
 $$ \pi^* = \arg\max_\pi \sum_t \mathbb{E}_{\rho_\pi} [r(s_t, a_t) + \alpha \mathcal{H}(\pi(\cdot|s_t))] $$
 where $\mathcal{H}(\pi(\cdot|s_t)) = \mathbb{E}_{a_t \sim \pi} [-\log \pi(a_t|s_t)]$ is the policy's entropy and $\alpha$ is the temperature parameter that controls the trade-off between reward and entropy.
@@ -883,6 +1293,8 @@ SAC uses a stochastic policy and two Q-networks to mitigate overestimation bias.
     For continuous actions, a \textbf{reparameterization trick} is used to make this differentiable.
     \item Update the temperature parameter $\alpha$ (optional) and perform soft updates on the target networks.
 \end{enumerate}
+
+
 
 \section{Model-Based Reinforcement Learning }
 
@@ -921,35 +1333,61 @@ Learning a dynamics model is a supervised learning task. Given a dataset of tran
     \item \textbf{Stochastic Models}: The model outputs a probability distribution over the next state, from which a sample can be drawn. This is more robust for uncertain environments.
 \end{itemize}
 
-\section{Combining Model-Free RL with a Model }
+\subsection{Combining Model-Free RL with a Model - Background Planning}
 A common approach is to use a learned model to generate synthetic data, which is then used to train a separate model-free RL algorithm. This is a powerful way to boost sample efficiency. However, a major challenge is \textbf{distribution shift}: the model's accuracy is limited to the states it has seen, and long synthetic rollouts can accumulate prediction errors, leading to a ``bad" policy.
 
-\subsection{Algorithm (v1 - Short Rollouts)}
+
+\subsubsection{Model-free RL with a Model -- Short Rollouts}
+
 \begin{enumerate}
-    \item Run the current policy $\pi_\theta(a|s)$ in the real environment to collect a dataset $\mathcal{D}_{env}$.
-    \item Learn a dynamics model $f_\eta(s, a)$ from $\mathcal{D}_{env}$.
-    \item For a number of steps, select states $s_i$ from $\mathcal{D}_{env}$ and use the learned model $f_\eta$ and policy $\pi_\theta$ to generate short, synthetic rollouts. Add these to a model-generated dataset $\mathcal{D}_{model}$.
-    \item Use an off-policy RL algorithm (e.g., SAC, DQN) to improve the policy $\pi_\theta$ on the combined dataset.
-    \item Repeat the process by running the improved policy in the real environment.
+    \item \textbf{Algorithm:}
+    \begin{enumerate}
+        \item Collect $D_{\text{env}}$ in real environment using $\pi_0$.
+        \item Learn $f_\eta(s,a)$ -- the model of the environment.
+        \item Generate smaller or synthetic rollouts and add them to $\rightarrow D_{\text{model}}$.
+        \item Update $\pi_\theta$ using the trajectories from $D_{\text{model}}$ using off-policy(SAC or DQN) RL. (For K times repeat with step c)
+        \item Deploy $\pi_\theta$ in real environment and repeat. (For N times repeat with step b)
+    \end{enumerate}
+    
+    \item \textbf{Why off-policy?} 
+    \begin{itemize}
+        \item $D_{\text{env}} = \{(s,a,r,s')_i\}$ is collected using different policies $\pi_0, \pi_1, \dots$ over training iterations.
+        \item Off-policy algorithms (e.g., DQN, SAC) can learn from experience generated by any behavior policy, not necessarily the current $\pi_\theta$.
+        \item Similar to DQN's replay buffer: we learn the \emph{greedy} Q-function regardless of the policy that produced the samples.
+    \end{itemize}
+
+    \item \textbf{Model usage:}
+    \begin{itemize}
+        \item Learn $f_\eta(s,a)$ from $D_{\text{env}}$ to approximate dynamics.
+        \item Sample states $s_i$ from $D_{\text{env}}$, simulate \emph{short rollouts} with $f_\eta$.
+        \item Augment $D_{\text{model}}$ with these synthetic tuples $(s,a,r,s')$.
+    \end{itemize}
+
+    \item \textbf{State coverage advantage:}
+    \begin{itemize}
+        \item Model rollouts may reach states not yet visited in the real environment (from $s_0$).
+        \item Expands exploration coverage without costly real-environment interaction.
+    \end{itemize}
+
+
 \end{enumerate}
+
 
 \subsection{Dyna-Q Style Algorithm}
 This algorithm uses a model to supplement real-world experience, often in a continuous loop.
+
+\item \textbf{Algorithm:}
 \begin{enumerate}
-    \item In the real environment, take an action $A_t \sim \pi_\theta$, and store the transition in a replay buffer $\mathcal{B}_{env}$.
-    \item Use the data in $\mathcal{B}_{env}$ to update the dynamics model $f_\eta$.
-    \item Perform a small number of model-based planning steps:
-    \begin{itemize}
-        \item Sample a state $s$ from $\mathcal{B}_{env}$.
-        \item Sample an action $a$ (e.g., from a uniform distribution or a policy).
-        \item Use the model to predict the next state and reward: $s', r \sim f_\eta(s,a)$.
-        \item Add the synthetic transition $(s, a, r, s')$ to a model-generated buffer $\mathcal{B}_{model}$.
-    \end{itemize}
-    \item Update the model-free components (Q/Critic/Actor) using a combination of transitions from $\mathcal{B}_{env}$ and $\mathcal{B}_{model}$.
+    \item Run base policy $\pi_0(a|s)$ in the real environment to collect $D_{\text{env}} = \{(s,a,r,s')\}_i$.
+    \item Learn environment model $f_\eta(s,a)$ using $D_{\text{env}}$.
+    \item Pick states $S_i$ from $D_{\text{env}}$, use $f_\eta(s,a)$ to make short rollouts; add to $D_{\text{model}}$.
+    \item Use both $D_{\text{env}}$ and $D_{\text{model}}$ to update $\pi_\theta(a|s)$ via any off-policy RL algorithm (e.g., DQN, SAC).
+    \item Deploy $\pi_\theta(a|s)$ in the real environment, appending $(s,a,r,s')$ to $D_{\text{env}}$ and repeat.
 \end{enumerate}
+
 This approach uses short rollouts from the model to avoid accumulating errors and combines real data to anchor learning, leading to more stable performance.
 
-\section{Direct Policy Learning with a Model }
+\subsection{Direct Policy Learning with a Model }
 This approach directly optimizes the policy by backpropagating gradients through the learned dynamics model. The key idea is to treat the environment model as part of the computational graph.
 \begin{enumerate}
     \item Run the policy $\pi_\theta$ in the real environment to collect a dataset $\mathcal{D}_{env}$.
@@ -960,46 +1398,14 @@ This approach directly optimizes the policy by backpropagating gradients through
 \end{enumerate}
 This method can be very sample-efficient, but it can suffer from issues like vanishing or exploding gradients when unrolling over many time steps, and its effectiveness is highly dependent on the accuracy of the learned model.
 
-\section{Model-Based Reinforcement Learning - Part 2 }
 
-\subsection{Recap: Model-Based vs. Model-Free RL}
-\subsubsection{Core Concepts}
-\begin{itemize}
-    \item \textbf{Model-Free RL}: The agent learns a policy or value function directly from interactions with the environment, without explicitly learning a model of the environment's dynamics.
-    \item \textbf{Model-Based RL}: The agent learns a dynamics model $p(s', r|s, a)$ from data and uses this model for planning to construct or improve the policy. This approach integrates learning (of the model) and planning.
-\end{itemize}
-
-\subsubsection{Key Trade-offs}
-\begin{itemize}
-    \item \textbf{Advantages}: Model-based methods are known for their high sample efficiency (they require fewer real-world interactions), rapid adaptation to environment changes, and the ability to handle uncertainty by planning with a probabilistic model.
-    \item \textbf{Disadvantages}: The main challenge is the presence of two sources of error: model approximation error and error in the value or policy construction from the model's output.
-\end{itemize}
-
-\subsection{Background Planning (Model-Free RL with a Model)}
-This approach uses a learned model to generate synthetic experience, which is then used to train a model-free algorithm. A key challenge is \textbf{distribution shif}t, where long simulated rollouts can accumulate errors, leading to a poor policy. This is mitigated by using short rollouts and regularly collecting new data from the real environment.
-
-\subsubsection{Algorithm (Short Rollouts)}
-\begin{enumerate}
-    \item Run the current policy $\pi_0(a|s)$ in the real environment to collect a dataset of transitions $\mathcal{D}_{env}$.
-    \item Learn a dynamics model $f_\eta(s, a)$ from $\mathcal{D}_{env}$.
-    \item Select states $s_i$ from $\mathcal{D}_{env}$ and use the learned model $f_\eta$ to generate short rollouts of synthetic transitions. Add these to a model-generated dataset $\mathcal{D}_{model}$.
-    \item Improve the policy $\pi_\theta$ using an off-policy RL algorithm (e.g., SAC) on the combined real and synthetic data.
-    \item Repeat the process by executing the updated policy in the real environment.
-\end{enumerate}
-
-\subsection{Direct Policy Learning with a Model}
-This method directly optimizes the policy by backpropagating the gradient of a performance objective through the learned dynamics model.
-\begin{itemize}
-    \item The policy and model are treated as a single computational graph.
-    \item The algorithm unrolls the policy's actions through the model to compute a simulated reward, and then backpropagates gradients of this reward to update the policy.
-\end{itemize}
-While potentially very sample-efficient, this approach is susceptible to vanishing or exploding gradients and relies heavily on the accuracy of the learned model.
-
-\subsection{Decision-Time Planning}
+\section{Model Based - Decision-Time Planning}
+\textbf{The goal is to find the action sequence that maximizes the sum of future reward.
+}\\
 In contrast to background planning, which improves the policy over time, decision-time planning uses the model to select the best action for the current state. The model is essentially used as a simulator to find an optimal action sequence. The goal is to find an action sequence that maximizes the sum of future rewards:
 $$ a_1, \dots, a_T = \arg\max_{a_1,\dots,a_T} \sum_{t=1}^T \gamma^{t-1} r_\eta(s_t, a_t) \quad \text{s.t.} \quad s_{t+1} = f_\eta(s_t, a_t) $$
 
-\subsubsection{Stochastic Optimization}
+\subsection{Stochastic Optimization}
 \begin{itemize}
     \item \textbf{Random Shooting Method}: This method samples a large number of random action sequences and evaluates each one using the learned model. The first action of the best-performing sequence is then executed. This is simple but can be inefficient in high-dimensional or long-horizon problems.
     \item \textbf{Cross-Entropy Method (CEM)}: CEM is an iterative optimization algorithm that refines a distribution of action sequences.
@@ -1012,7 +1418,7 @@ $$ a_1, \dots, a_T = \arg\max_{a_1,\dots,a_T} \sum_{t=1}^T \gamma^{t-1} r_\eta(s
     \end{enumerate}
 \end{itemize}
 
-\subsubsection{Monte Carlo Tree Search (MCTS)}
+\subsection{Monte Carlo Tree Search (MCTS)}
 MCTS is a planning algorithm that explores a search tree to find the best action. It is commonly used in game-playing (e.g., AlphaGo).
 \begin{enumerate}
     \item \textbf{Selection}: Starting from the root, traverse the tree by choosing actions that balance exploration (visiting less-explored nodes) and exploitation (choosing nodes with high value estimates) until a leaf node $s_L$ is reached. A common selection strategy is the UCT formula:
@@ -1027,10 +1433,101 @@ This approach, often called Model Predictive Control (MPC), combines a learned m
 \begin{enumerate}
     \item Collect data using an initial policy and learn a dynamics model $f_\eta(s,a)$.
     \item For a given state, use the learned model and a planning algorithm (e.g., CEM or MCTS) to find the best sequence of actions.
-    \item Execute only the first action of this sequence in the real environment.
+    \item \textbf{Execute only the first action of this sequence in the real environment}.
     \item Observe the next state, add the transition to the dataset, and repeat the process for the new state.
 \end{enumerate}
 This is a robust method because it uses the model for planning, but only commits to the first action, allowing it to replan at every step with new, real-world information.
+
+\subsection{Uncertainty in RL}
+
+\subsubsection{Sources}
+\begin{itemize}
+    \item \textbf{Epistemic (model uncertainty)}: Due to limited data; reduces with exploration.
+    \item \textbf{Aleatoric (intrinsic randomness)}: Due to stochasticity in environment; cannot be reduced.
+\end{itemize}
+
+\subsubsection{In Model-Based RL}
+Learned dynamics model $f_\eta(s,a)$ may be inaccurate in unexplored regions $\rightarrow$ planning might exploit these errors.
+\begin{itemize}
+    \item \textbf{Example}: MPC planning might choose actions leading into regions of high prediction uncertainty (red circled areas in plots).
+\end{itemize}
+
+\subsubsection{Mitigation}
+\begin{itemize}
+    \item Use ensembles or Bayesian models to estimate epistemic uncertainty.
+    \item Penalize reward in high-uncertainty states (uncertainty-aware planning).
+    \item Combine real and simulated rollouts cautiously; trust short rollouts more in uncertain regions.
+\end{itemize}
+
+\subsection{Uncertainty in Neural Networks}
+
+\subsubsection{Estimate model uncertainty (how unsure the parameters are)}
+
+How probable is $\theta$ given the dataset. This probability will have an entropy, which will say how uncertain the model is. 
+\begin{itemize}
+    \item Find $p(\theta \mid \mathcal{D})$ — distribution of parameters given data.
+    \item Entropy of $p(\theta \mid \mathcal{D}) = $ how uncertain the model is.
+\end{itemize}
+
+\textbf{Prediction}
+Average over possible parameters:
+$$
+p(s_{t+1} \mid s_t, a_t, \mathcal{D}) = \int p(s_{t+1} \mid s_t, a_t, \theta) \, p(\theta \mid \mathcal{D}) \, d\theta
+$$
+
+Avoid overconfident exploitation of model errors; uncertainty estimates guide safer, more reliable exploration and planning.
+
+\subsubsection{Bootstrap Ensembles}
+If you have $K$ environment models of the environment and they all predict the same state transition - $p(s_{t+1} \mid s_t, a_t, \theta)$, the uncertainty is low; if their predictions differ, the uncertainty is high.\\ \\
+\textbf{Method:}
+\begin{itemize}
+    \item \textbf{Dataset}: $\mathcal{D} = \{(s,a,r,s')\}_i$.
+    \item Train $K$ models.
+    \item For each model, sample batches $\mathcal{D}_1, \mathcal{D}_2, \dots, \mathcal{D}_K$ with replacement from $\mathcal{D}$.
+\end{itemize}
+
+\textbf{Before:} Plan using one model:
+$$
+a_{1:T} = \arg\max_{a_{1:T}} \sum_{t=1}^T \gamma^t r_\eta(s_t,a_t) \quad \text{s.t.} \quad s_{t+1} = f_\eta(s_t,a_t)
+$$
+
+\textbf{Now:} Plan using $K$ models (ensemble) and average rewards:
+$$
+a_{1:T} = \arg\max_{a_{1:T}} \colorbox{yellow}{$\frac{1}{K}$} \sum_{i=1}^K \sum_{t=1}^T \gamma^t r_{\eta_i}(s_{t,i},a_t)
+$$
+where $s_{t+1,i} = f_{\eta_i}(s_{t,i},a_t)$.\\
+
+\textbf{Key idea:} Choose actions that perform well on average across all models $\rightarrow$ robust to model uncertainty.\\
+
+\textbf{Diversity in environment model comes from:}
+\begin{itemize}
+    \item Different neural network initializations.
+    \item Different training samples for each model.
+\end{itemize}
+
+\textbf{Benefit:} Differences between models give an estimate of epistemic uncertainty.
+
+\subsubsection{Bayesian Neural Networks (BNNs)}
+\begin{itemize}
+\item \textbf{Goal:} Capture model uncertainty by learning a \textit{distribution} over network weights.
+\item \textbf{Parameter Uncertainty:} Estimate the posterior $p(\theta \mid \mathcal{D})$.
+\item \textbf{Uncertainty Measure:} Entropy of $p(\theta \mid \mathcal{D})$ indicates model uncertainty.
+\item \textbf{Prediction:} Average over possible parameter values:
+\begin{equation*}
+p(s_{t+1} \mid s_t, a_t, \mathcal{D}) = \int p(s_{t+1} \mid s_t, a_t, \theta) , p(\theta \mid \mathcal{D}) , d\theta
+\end{equation*}
+\item \textbf{Benefit:} Earlier we had scalar values for the parameter ($\theta$), now we will have $\mu$ and $\sigma$ from which we can see for a given input how much the output can vary. Here we are directly encoding the probability of $\theta$.
+\end{itemize}
+
+\subsection{Latent Space Models}
+In RL, especially when observations are high-dimensional (e.g., images), we often compress them into a low-dimensional latent state space $s_t$ using an encoder.
+
+Then, the environment’s components are modeled separately in this latent space:
+\begin{itemize}
+    \item \textbf{Observation Model $p(o_t \mid s_t)$}: Maps latent state $s_t$ back to observation $o_t$. Handles high-dimensional data (like pixels). Doesn’t need to model temporal dynamics.
+    \item \textbf{Dynamics Model $p(s_{t+1} \mid s_t, a_t)$}: Predicts the next latent state from the current one and the action. Low-dimensional but must capture temporal dependencies.
+    \item \textbf{Reward Model $p(r_t \mid s_t, a_t)$}: Predicts reward from latent state and action.
+\end{itemize}
 
 \section{Safe Reinforcement Learning   }
 
@@ -1048,6 +1545,20 @@ To formalize safety, Safe RL often uses the Constrained Markov Decision Process 
     \item \textbf{Classic MDP}: $\langle S, A, P, R, \gamma \rangle$, where the objective is to maximize $V(s_0) = \mathbb{E}_\pi \left[ \sum_{t=0}^\infty \gamma^t R(s_t, a_t) \right]$.
     \item \textbf{CMDP}: A CMDP adds a cost function $C: S \times A \to \mathbb{R}$ and a set of thresholds $b_i$. The objective is to maximize the expected return subject to a set of constraints on the expected cumulative cost.
 \end{itemize}
+
+
+\subsubsection{Machiavelli Benchmark}
+\begin{itemize}[leftmargin=*,nosep]
+  \item The Machiavelli Benchmark is a safety-focused evaluation framework for reinforcement learning and language model agents, designed to test whether they can achieve goals without engaging in unethical or harmful behaviors.
+  \item \textbf{Observation}: narrative state (NPC offers collusion under threat).
+  \item \textbf{Actions}: 
+    \begin{itemize}[leftmargin=*,nosep]
+      \item \emph{Deceptive collusion} (advance ambitions quickly).
+      \item \emph{Honest cooperation} (pretend to help, secretly oppose).
+      \item \emph{Self-sacrifice} (enter the mines to investigate).
+    \end{itemize}
+\end{itemize}
+
 
 \subsubsection{Optimally Safe Policies}
 An optimally safe policy $\pi_c^*$ is one that achieves the highest possible return while satisfying all safety constraints.
@@ -1176,9 +1687,9 @@ Recent research explores using large pre-trained models (e.g., LLMs) to provide 
 \subsection{Continual RL}
 Continual RL focuses on agents that operate in vast, non-stationary worlds without a clear start or end, where rewards are sparse, and the environment changes over time. Challenges include irreversibility, rich observations, and catastrophic forgetting.
 
-\section*{Sample Question and Answer}
+\section{Sample Question and Answer}
 
-\subsection*{Question 1: REINFORCE with Baseline}
+\subsection{Question 1: REINFORCE with Baseline}
 \textbf{The policy gradient update with a baseline is given by $\theta_{t+1} = \theta_t + \alpha \nabla_\theta \log \pi_\theta(A_t|S_t) (G_t - b(S_t))$, where $G_t$ is the Monte-Carlo return and $b(S_t)$ is a learned value function $\hat{v}(S_t, w)$.}
 \begin{enumerate}
     \item \textbf{Why is it mathematically valid to subtract a baseline $b(S_t)$ that only depends on the state? Explain why this does not introduce bias into the policy gradient estimate. (~2 sentences)}
@@ -1189,7 +1700,7 @@ Continual RL focuses on agents that operate in vast, non-stationary worlds witho
     \textbf{Answer:} The primary benefit of using a baseline is to reduce the variance of the policy gradient estimates, which leads to more stable and faster learning. The term $(G_t - b(S_t))$ is a Monte-Carlo estimate of the advantage function $A(S_t, A_t)$. This is because $G_t$ is an estimate of the Q-value $q_\pi(S_t, A_t)$ and the baseline $b(S_t)$ is an estimate of the state-value $v_\pi(S_t)$.
 \end{enumerate}
 
-\subsection*{Question 2: Proximal Policy Optimization (PPO)}
+\subsection{Question 2: Proximal Policy Optimization (PPO)}
 The PPO algorithm uses a clipped surrogate objective:
 $$ \max_\theta \mathbb{E}_{\pi_{\theta_{old}}} \left[ \min\left( r_t(\theta) \hat{A}_t, \text{clip}(r_t(\theta), 1 - \epsilon, 1 + \epsilon) \hat{A}_t \right) \right] $$
 where $r_t(\theta) = \frac{\pi_\theta(A_t|S_t)}{\pi_{\theta_{old}}(A_t|S_t)}$.
@@ -1202,7 +1713,7 @@ where $r_t(\theta) = \frac{\pi_\theta(A_t|S_t)}{\pi_{\theta_{old}}(A_t|S_t)}$.
     \textbf{Answer:} PPO's clipped objective provides a simpler, first-order optimization method to constrain the policy update. This avoids the complex and computationally expensive second-order optimization (like conjugate gradient) required by TRPO to solve its KL-divergence constraint.
 \end{enumerate}
 
-\subsection*{Question 3: Soft Actor-Critic (SAC)}
+\subsection{Question 3: Soft Actor-Critic (SAC)}
 The SAC objective function is augmented with an entropy term:
 $$ \pi^* = \arg\max_\pi \sum_t \mathbb{E}_{\rho^\pi} [r(s_t, a_t) + \alpha \mathcal{H}(\pi(\cdot|s_t))] $$
 \begin{enumerate}
@@ -1212,7 +1723,7 @@ $$ \pi^* = \arg\max_\pi \sum_t \mathbb{E}_{\rho^\pi} [r(s_t, a_t) + \alpha \math
     \textbf{Answer:} Maximizing entropy encourages better exploration by preventing premature convergence to a suboptimal policy and leads to more robust, stable policies. This is reflected in the soft Q-function update by adding the entropy of the next state's policy to the target value: $y_i = r_i + \gamma(\min_j Q_j(s', a') - \alpha \log\pi(a'|s'))$. This modification ensures that the value functions account for the future entropy rewards.
 \end{enumerate}
 
-\subsection*{Question 4: Offline Reinforcement Learning (CQL)}
+\subsection{Question 4: Offline Reinforcement Learning (CQL)}
 Offline RL learns from a fixed dataset, which presents a major challenge known as distribution shift.
 \begin{enumerate}
     \item \textbf{Briefly explain why out-of-distribution (OOD) actions are problematic for standard off-policy algorithms like Q-learning in the offline setting.}
@@ -1221,7 +1732,7 @@ Offline RL learns from a fixed dataset, which presents a major challenge known a
     \textbf{Answer:} The high-level goal of the CQL regularizer is to combat Q-value overestimation for OOD actions. It explicitly pushes down the Q-values for actions that are likely OOD (sampled from a distribution $\mu(a|s)$). Simultaneously, it pushes up the Q-values for actions that are actually present in the dataset.
 \end{enumerate}
 
-\subsection*{Question 5: Dynamic Programming vs. Model-Free Control}
+\subsection{Question 5: Dynamic Programming vs. Model-Free Control}
 Consider two fundamental algorithms: Value Iteration (a Dynamic Programming method) and Q-Learning (a Model-Free Control method). Both aim to find the optimal action-value function $q^*$.
 \begin{enumerate}
     \item \textbf{What is the single most important difference in the assumptions these two algorithms make about the environment? (~2 sentences)}
@@ -1230,7 +1741,7 @@ Consider two fundamental algorithms: Value Iteration (a Dynamic Programming meth
     \textbf{Answer:} In most real-world problems, the true dynamics of the environment are unknown and far too complex to be explicitly defined or stored. Q-Learning's ability to learn from direct interaction and experience makes it applicable to these complex scenarios where building an explicit model is infeasible.
 \end{enumerate}
 
-\subsection*{Question 6: On-Policy vs. Off-Policy Learning}
+\subsection{Question 6: On-Policy vs. Off-Policy Learning}
 Sarsa is a classic on-policy TD control algorithm, while Q-Learning is its off-policy counterpart.
 \begin{enumerate}
     \item \textbf{Explain the difference in their update rules and how it relates to their on-policy vs. off-policy nature. (~2 sentences)}
@@ -1244,10 +1755,10 @@ Sarsa is a classic on-policy TD control algorithm, while Q-Learning is its off-p
     \textbf{Answer:} Sarsa is on-policy because it uses the action $A_{t+1}$ actually taken by the current policy to form its target, learning the value of the policy it is currently following. Q-Learning is off-policy because it uses the greedy action $\max_{a'} Q(S_{t+1}, a')$ to form its target, learning the value of the optimal (greedy) policy, regardless of which exploratory action was actually taken.
     
     \item \textbf{What is the main advantage of off-policy learning (like Q-Learning) over on-policy learning (like Sarsa) in terms of data efficiency? Why might an on-policy method sometimes be preferred? (~3 sentences)}
-    \textbf{Answer:} The main advantage of off-policy learning is data efficiency, as it can learn the optimal policy from data generated by any behavior policy, including old data stored in a replay buffer. On-policy methods, in contrast, must discard data after each policy update. However, an on-policy method might be preferred for its stability, as it directly learns about the consequences of the policy it's actually executing, which can lead to smoother convergence, especially in the presence of function approximation.
+    \textbf{Answer:} The main advantage of off-policy learning is data efficiency, as it can learn the optimal policy from data generated by any behavior policy, including old data stored in a replay buffer. On-policy methods, in contrast, must discard data after each policy update. However, an on-policy method might be preferred for its stability, as it directly learns about the consequences (the feedback you get from the environment is of the current policy and not using a different policy like off-policy) of the policy it's actually executing, which can lead to smoother convergence, especially in the presence of function approximation.
 \end{enumerate}
 
-\subsection*{Question 7: Model-Based Reinforcement Learning}
+\subsection{Question 7: Model-Based Reinforcement Learning}
 Model-based RL approaches learn a model of the environment to aid in policy learning.
 \begin{enumerate}
     \item \textbf{What is the primary advantage and a key disadvantage of model-based RL? (~2 sentences)}
@@ -1256,7 +1767,7 @@ Model-based RL approaches learn a model of the environment to aid in policy lear
     \textbf{Answer:} Dyna-Q mitigates the problem of model error by continuously updating the model with real experience collected from the environment. It combines planning with model-generated data and learning from real data, which helps to correct for inaccuracies in the model and ground the policy in reality.
 \end{enumerate}
 
-\subsection*{Question 8: Deep Deterministic Policy Gradient (DDPG)}
+\subsection{Question 8: Deep Deterministic Policy Gradient (DDPG)}
 DDPG is an off-policy algorithm designed for continuous control.
 \begin{enumerate}
     \item \textbf{Why is DDPG considered an ``Actor-Critic" algorithm? Briefly describe the roles of the actor and the critic. (~2 sentences)}
@@ -1264,5 +1775,76 @@ DDPG is an off-policy algorithm designed for continuous control.
     \item \textbf{Since the actor's policy is deterministic, how does DDPG ensure sufficient exploration of the state-action space during training? (~1 sentence)}
     \textbf{Answer:} DDPG ensures exploration by adding noise (typically from a stochastic process like Ornstein-Uhlenbeck or simple Gaussian noise) to the actions selected by the deterministic actor during the training phase.
 \end{enumerate}
+
+\subsection{Question 9: DDQN vs. SAC: A Mathematical Comparison}
+
+\subsubsection*{1. Double DQN (DDQN) Equation}
+DDQN improves over vanilla DQN by separating action selection and evaluation to reduce overestimation bias.
+
+\textbf{Target value:}
+$$ y^{\text{DDQN}} = r + \gamma \ Q_{\theta^-} \big( s', \ \arg\max_a Q_{\theta}(s',a) \big) $$
+Where:
+\begin{itemize}
+    \item $Q_{\theta} \to$ online network (used for selection of the best action)
+    \item $Q_{\theta^-} \to$ target network (used for evaluation of that chosen action)
+    \item $r \to$ reward received
+    \item $\gamma \to$ discount factor
+\end{itemize}
+
+\textbf{Loss function:}
+$$ L(\theta) = \mathbb{E}_{(s,a,r,s') \sim \mathcal{D}} \left[ \big( Q_{\theta}(s,a) - y^{\text{DDQN}} \big)^2 \right] $$
+\textbf{Key features in the equation:}
+\begin{itemize}
+    \item The $\arg\max_a Q_\theta(s',a)$ assumes a deterministic best action.
+    \item No entropy term -- the algorithm focuses only on expected reward.
+\end{itemize}
+
+\subsubsection*{2. Soft Actor-Critic (SAC) Equation}
+SAC comes from the maximum entropy RL framework and adds an entropy bonus directly into the Bellman backup.
+
+\textbf{Target value (Clipped Double Q-learning):}
+$$ y^{\text{SAC}} = r + \gamma \ \mathbb{E}_{a' \sim \pi_\phi} \Big[ \min_{i \in \{1,2\}} Q_{\theta_i}(s',a') - \alpha \log \pi_\phi(a'|s') \Big] $$
+Where:
+\begin{itemize}
+    \item Two critics $Q_{\theta_1}, Q_{\theta_2} \to$ take the minimum to reduce overestimation.
+    \item $\pi_\phi(a|s) \to$ stochastic policy (actor network).
+    \item $\alpha \to$ temperature parameter controlling entropy weight.
+    \item $-\alpha \log \pi_\phi(a'|s') \to$ entropy bonus (encourages exploration).
+\end{itemize}
+
+\textbf{Critic loss:}
+$$ L(\theta_i) = \mathbb{E}_{(s,a,r,s') \sim \mathcal{D}} \left[ \big( Q_{\theta_i}(s,a) - y^{\text{SAC}} \big)^2 \right], \quad i = 1, 2 $$
+
+\textbf{Actor loss:}
+$$ J_\pi(\phi) = \mathbb{E}_{s \sim \mathcal{D}} \left[ \alpha \log \pi_\phi(a|s) - Q_{\theta_1}(s,a) \right] $$
+This directly optimizes the policy toward actions that have:
+\begin{itemize}
+    \item High Q-values (exploitation)
+    \item High entropy (exploration)
+\end{itemize}
+
+\subsubsection*{3. Side-by-Side Equation Comparison}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Concept} & \textbf{DDQN} & \textbf{SAC} \\
+\hline
+\textbf{Action choice in target} & $\arg\max_a Q_\theta(s',a)$ (deterministic) & $a' \sim \pi_\phi(a|s')$ (stochastic) \\
+\hline
+\textbf{Action evaluation in target} & $Q_{\theta^-}(s', a_{\text{best}})$ & $\min(Q_{\theta_1}, Q_{\theta_2})(s',a')$ \\
+\hline
+\textbf{Entropy term} & None & $-\alpha \log \pi_\phi(a'|s')$ \\
+\hline
+\textbf{Critics} & One Q-function (online + target) & Two Q-functions \\
+\hline
+\textbf{Policy update} & Implicit (greedy from Q) & Explicit gradient update of $\pi_\phi$ \\
+\hline
+\end{tabular}
+
+\subsubsection*{4. Key Takeaways from the Equations}
+\begin{itemize}
+    \item In DDQN, the update target is purely: Reward + discounted best Q-value for the next state. "Best" means the deterministic argmax from the online Q-network, evaluated by the target Q-network.
+    \item In SAC, the update target is: Reward + discounted pessimistic estimate ($\min$ of critics) -- entropy term. The ``best'' action is stochastic, drawn from the learned policy.
+    \item The entropy term in SAC's equations keeps the policy probabilistic and exploratory, which DDQN does not do.
+\end{itemize}
 
 \end{document}
