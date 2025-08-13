@@ -1407,6 +1407,48 @@ As discussed in Section \ref{sec:ddpg} DDPG is an off-policy, actor-critic algor
     \end{enumerate}
 \end{enumerate}
 
+\subsection*{1. Broken Version --- Off-Policy Actor-Critic v0.5}
+\textbf{What it does:}
+\begin{itemize}
+    \item Uses a replay buffer but still tries to learn $V(s)$ directly from old (off-policy) samples.
+    \item Critic target:
+    \[
+        y_t = r_{t+1} + \gamma \, \hat{v}_{w^-}(s_{t+1})
+    \]
+    \item Actor uses advantages computed from $V$ estimates.
+\end{itemize}
+
+\textbf{Why it’s broken:}
+\begin{itemize}
+    \item Off-policy issue: You can’t directly learn $V(s)$ from replay buffer samples collected by older policies.
+    \item The state and action distributions no longer match the current policy, making Bellman targets biased.
+    \item This leads to incorrect value targets and unstable learning.
+\end{itemize}
+
+\subsection*{2. The Fix --- Learn $Q(s,a)$ Instead (Off-Policy Actor-Critic v0.8)}
+\textbf{Key change:}
+\begin{itemize}
+    \item Replace $V$-learning with a Q-learning style target:
+    \[
+        y_t = r_{t+1} + \gamma \, \hat{q}_{w^-}\big(s_{t+1}, a_{t+1} \sim \pi_\theta(\cdot|s_{t+1})\big)
+    \]
+    \item Here, $a_{t+1}$ is sampled from the \emph{current} policy, not the replay buffer.
+\end{itemize}
+
+\textbf{Why it works:}
+\begin{itemize}
+    \item $Q(s,a)$ Bellman targets remain valid off-policy — you only need the next action from the current policy.
+    \item Advantage can now be computed as:
+    \[
+        \hat{A}(s_i,a_i) = \hat{q}_w(s_i,a_i) - \hat{v}(s_i)
+    \]
+    \item With:
+    \[
+        \hat{v}(s_i) = \sum_a \pi_\theta(a|s_i) \, \hat{q}_w(s_i,a)
+    \]
+\end{itemize}
+
+
 \section{Soft Actor-Critic (SAC) }
 
 \textbf{Standard RL:} ``I'll keep doing what seems best right now.'' \\
@@ -1445,6 +1487,13 @@ $$ V^\pi(s_t) = \mathbb{E}_{a_t \sim \pi} [Q^\pi(s_t, a_t)] $$
     \item \textbf{Soft action-value}:
     $$ Q^\pi(s_t, a_t) = r(s_t, a_t) + \gamma \mathbb{E}_{s_{t+1}} [V^\pi(s_{t+1})] $$
 \end{itemize}
+
+\begin{itemize}
+    \item In optimization, a \textbf{soft maximum} (or \emph{soft value}) means we do not pick the single best action deterministically.
+    \item Instead, we average over all actions, weighting them by their probability under $\pi$, and encourage a broader distribution.
+    \item This avoids hard-max selection from Q-values (as in DQN), which can lead to premature convergence.
+\end{itemize}
+
 
 \subsection{SAC Algorithm}
 SAC uses a stochastic policy and two Q-networks to mitigate overestimation bias. It is particularly effective for continuous control tasks.
