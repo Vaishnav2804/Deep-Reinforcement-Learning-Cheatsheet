@@ -7,6 +7,7 @@
 \usepackage{graphicx}
 \usepackage{tikz}
 \usepackage{xcolor}
+\usepackage{hyperref}
 
 
 \title{Reinforcement Learning Notes}
@@ -172,6 +173,8 @@ An agent's representation of its environment.
 
 
 \section{Introduction to Policy Gradient Methods }
+
+Policy gradient method means it directly optimizes the policy by taking steps in the direction of the gradient of some objective function.
 
 \subsection{Policy}
 The parameterized policy is defined as: $\pi(a|s, \theta) = \Pr(A_t = a \mid S_t = s, \theta_t = \theta)$.
@@ -984,20 +987,22 @@ If we directly use $A_{t+1}$ from the Experience Replay Buffer, we are implicitl
     \item Best action: $\arg\max_a Q(s,a) \approx$ elite mean or max.
 \end{enumerate}
 
-\subsection{Deep Deterministic Policy Gradient (DDPG) Notes}
+\subsection{Deep Deterministic Policy Gradient (DDPG)}
+\label{sec:ddpg}
 
 \begin{itemize}
     \item DDPG is an \textbf{actor-critic} method for handling \textbf{continuous action spaces}.
     \item The \textbf{actor network} $\mu_\theta$ outputs the best action for a given state $S$. It is called the critic network because now the objective is to maximize the critic. 
     \item The \textbf{critic network} $Q_w(S,A)$ estimates the action-value function.
     \item The network has two parts: an \textbf{actor} $\mu(s)$ and a \textbf{critic} $Q(s,a)$.
+    \item The ``deterministic" in DDPG refers to the type of policy the algorithm learns. A deterministic policy outputs a specific action for each given state, as opposed to a stochastic policy which outputs a probability distribution over actions.
 \end{itemize}
 
 
 \subsubsection{Pseudocode}
 \begin{enumerate}
     \item Initialize actor and critic networks $\mu$ and $Q$ with parameters $\theta$ and $w$.
-    \item Initialize target networks $\mu'$ and $Q'$ with parameters $\theta' \leftarrow \theta$ and $w' \leftarrow w$.
+    \item Initialize target networks $\mu^-$ and $Q^-$ with parameters $\theta^- \leftarrow \theta$ and $w^- \leftarrow w$.
     \item Initialize replay buffer $\mathcal{B}$.
     \item For each episode:
     \begin{enumerate}
@@ -1011,7 +1016,7 @@ If we directly use $A_{t+1}$ from the Experience Replay Buffer, we are implicitl
             \item Sample a random minibatch of $N$ transitions from $\mathcal{B}$.
             \item For each sampled transition $(S_i, A_i, R_i, S'_i)$, calculate the target value:
             \[
-                y_i = R_i + \gamma Q_{w'}(S'_i, \mu_{\theta'}(S'_i))
+                y_i = R_i + \gamma Q_{w^-}(S'_i, \mu_{\theta^-}(S'_i))
             \]
             \item Update the critic network by minimizing the loss:
             \[
@@ -1023,10 +1028,10 @@ If we directly use $A_{t+1}$ from the Experience Replay Buffer, we are implicitl
             \]  -- Now the objective is to maximize the critic. 
             \item Soft update the target networks:
             \[
-                w' \leftarrow \tau w + (1-\tau)w'
+                w^- \leftarrow \tau w + (1-\tau)w^-
             \]
             \[
-                \theta' \leftarrow \tau \theta + (1-\tau)\theta'
+                \theta^- \leftarrow \tau \theta + (1-\tau)\theta^-
             \]
         \end{enumerate}
     \end{enumerate}
@@ -1119,6 +1124,10 @@ This approach can be difficult because the behavior policy $\pi_\beta$ is often 
 Conservative Q-Learning (CQL) is a method that directly addresses the overestimation problem by modifying the Q-learning objective. Its goal is to \textbf{conservatively lower the Q-values for OOD actions} while keeping the Q-values for in-distribution actions high.
 The CQL loss function is:
 $$ L_{CQL}(Q) = \alpha \left( \mathbb{E}_{s \sim D, a \sim \mu(a|s)} [Q(s,a)] - \mathbb{E}_{(s,a) \sim D} [Q(s,a)] \right) + \mathbb{E}_{(s,a,s') \sim D} \left[ \left(Q(s,a) - \left(r(s,a) + \gamma \mathbb{E}_{a' \sim \pi(a'|s')}[Q(s',a')]\right)\right)^2 \right] $$
+
+\begin{itemize}
+    \item Where $\mu$ is the sampling distribution over actions (Softmax).
+\end{itemize}
 The first term is the key addition: it pushes down the Q-values on a set of sampled OOD actions (e.g., from a uniform distribution $\mu$) while pushing up the Q-values for actions present in the dataset.
 
 \subsubsection{CQL Algorithm Pseudocode}
@@ -1164,15 +1173,35 @@ A2C is a stable on-policy method that reduces variance compared to REINFORCE by 
 \end{enumerate}
 
 \subsection{Trust Region Policy Optimization (TRPO)}
-TRPO is an on-policy method that ensures policy updates are small and stable by introducing a trust region constraint. It maximizes a surrogate objective (true objective) function subject to a KL-divergence constraint on the policy change.
+Policy gradient methods are susceptible to large updates that can destabilize training. If a policy update is too large, it can cause a catastrophic drop in performance. \\
+
+TRPO addresses this by introducing the concept of a "trust region." It aims to find the largest possible step that improves the policy, while ensuring that the new policy is not too far from the old policy. "Too far" is measured by the Kullback-Leibler (KL) divergence.
+
 $$ \max_\theta \mathbb{E}_{\pi_{\theta_{old}}} \left[ \frac{\pi_\theta(A_t|S_t)}{\pi_{\theta_{old}}(A_t|S_t)} A_{\pi_{\theta_{old}}}(S_t, A_t) \right] $$
 $$ \text{s.t. } \mathbb{E}_{\pi_{old}} [D_{KL}(\pi_{old} || \pi_\theta)] \leq \delta $$
-This method is complex to implement due to the second-order optimization required to handle the constraint.
+
+\begin{itemize}
+    \item $\delta$ is a small hyperparameter controlling the maximum allowed KL divergence.
+\end{itemize}
+
+\textbf{How do we ensure we don't go too far:} \\ 
+Using Hessian (second order derivative) TRPO ensures it doesn't violate the KL divergence constraint $\delta$. \\
+
+\textbf{But!} This method is complex to implement due to the second-order optimization required to handle the constraint.
 
 \subsection{Proximal Policy Optimization (PPO)}
 PPO is a popular, simpler alternative to TRPO that uses a clipped surrogate objective to achieve a similar effect of constraining policy updates.
-$$ \max_\theta \mathbb{E}_{\pi_{\theta_{old}}} \left[ \min\left( r_t(\theta) \hat{A}_t, \clip(r_t(\theta), 1 - \epsilon, 1 + \epsilon) \hat{A}_t \right) \right] $$
+$$ J^{PPO} (\theta) =  \max_\theta \mathbb{E}_{\pi_{\theta_{old}}} \left[ \min\left( r_t(\theta) \hat{A}_t, clip(r_t(\theta), 1 - \epsilon, 1 + \epsilon) \hat{A}_t \right) \right] $$
+\begin{itemize}
+    \item $\epsilon$ is a hyperparameter (e.g., 0.1 or 0.2) that defines the ``clipping range."
+\end{itemize}
+
 where $r_t(\theta) = \frac{\pi_\theta(A_t|S_t)}{\pi_{\theta_{old}}(A_t|S_t)}$ is the probability ratio and $\hat{A}_t$ is the advantage estimate. The `clip` function prevents the policy from making excessively large changes, thereby avoiding catastrophic updates.
+
+\begin{itemize}
+    \item If $A_t > 0$ (good action): We want to increase the probability of this action. The objective takes the minimum of $r_t(\theta)A_t$ and $(1+\epsilon)A_t$. If $r_t(\theta)$ goes above $1+\epsilon$, it gets clipped. This prevents updates from becoming too large and making the new policy vastly different from the old one, even if the action is very good.
+    \item If $A_t < 0$ (bad action): We want to decrease the probability of this action. The objective takes the minimum of $r_t(\theta)A_t$ and $(1-\epsilon)A_t$. If $r_t(\theta)$ goes below $1-\epsilon$, it gets clipped. This prevents the policy from being penalized too much for actions that were just slightly worse than average. It avoids pushing the policy too far away from the old policy.
+\end{itemize}
 
 \subsubsection{PPO Algorithm}
 The PPO algorithm is similar to Batch A2C but uses the PPO clipped objective for the actor update.
@@ -1195,6 +1224,16 @@ The basic actor-critic algorithm updates after each single time step. While simp
     \item \textbf{Actor Update}: Update the policy $\pi_\theta$ using the TD-error as the advantage signal: $\hat{A}(S_t, A_t) = y_t - \hat{v}_w(S_t)$.
 \end{enumerate}
 
+In the on-policy version, the data used for learning comes from the same policy that’s being updated. This can be inefficient because each data sample can only be used once.
+
+\subsection{Why Off-Policy Actor-Critic?}
+
+\begin{itemize}
+    \item Off-policy allows you to learn from any past experience, not just from the current policy's behavior.
+    \item This is made possible through the use of a replay buffer (which stores past experiences) and target networks (which stabilize learning).
+    \item Instead of learning the state value $V(s)$, which is tricky off-policy, we learn the action value $Q(s,a)$, as $Q$ can be estimated from replay buffer samples without bias from old policies.
+\end{itemize}
+
 \subsection{Off-Policy Actor-Critic}
 This is a more modern approach that combines the benefits of actor-critic methods with a replay buffer, allowing it to be off-policy. To support off-policy learning, it typically uses a Q-function instead of a V-function.
 \begin{enumerate}
@@ -1208,13 +1247,13 @@ This is a more modern approach that combines the benefits of actor-critic method
     \item \textbf{Target Network Update}: The target critic network $w^-$ is updated slowly using a soft update: $w^- \leftarrow \tau w^- + (1-\tau) w$.
 \end{enumerate}
 
-\subsection{Deep Deterministic Policy Gradient (DDPG)}
-DDPG is an off-policy, actor-critic algorithm for continuous action spaces. It uses a deterministic policy $\mu_\theta(s)$ for acting, with added noise for exploration, $A_t = \mu_\theta(S_t) + \mathcal{N}_t$.
+\subsection{Deep Deterministic Policy Gradient (DDPG)} 
+As discussed in Section \ref{sec:ddpg} DDPG is an off-policy, actor-critic algorithm for continuous action spaces. It uses a deterministic policy $\mu_\theta(s)$ for acting, with added noise for exploration, $A_t = \mu_\theta(S_t) + \mathcal{N}_t$.
 
 \subsubsection{Pseudocode}
 \begin{enumerate}
     \item Initialize actor and critic networks $\mu$ and $Q$ with parameters $\theta$ and $w$.
-    \item Initialize target networks $\mu'$ and $Q'$ with parameters $\theta' \leftarrow \theta$ and $w' \leftarrow w$.
+    \item Initialize target networks $\mu^-$ and $Q^-$ with parameters $\theta^- \leftarrow \theta$ and $w^- \leftarrow w$.
     \item Initialize replay buffer $\mathcal{B}$.
     \item For each episode:
     \begin{enumerate}
@@ -1228,7 +1267,7 @@ DDPG is an off-policy, actor-critic algorithm for continuous action spaces. It u
             \item Sample a random minibatch of $N$ transitions from $\mathcal{B}$.
             \item For each sampled transition $(S_i, A_i, R_i, S'_i)$, calculate the target value:
             \[
-                y_i = R_i + \gamma Q_{w'}(S'_i, \mu_{\theta'}(S'_i))
+                y_i = R_i + \gamma Q_{w^-}(S'_i, \mu_{\theta^-}(S'_i))
             \]
             \item Update the critic network by minimizing the loss:
             \[
@@ -1237,13 +1276,13 @@ DDPG is an off-policy, actor-critic algorithm for continuous action spaces. It u
             \item Update the actor network using the sampled policy gradient:
             \[
                 \nabla_{\theta} J \approx \frac{1}{N} \sum_i \nabla_A Q_w(S_i, A)|_{A=\mu_\theta(S_i)} \nabla_\theta \mu_\theta(S_i)
-            \]  -- Now the objective is to maximize the critic. 
+            \]   Now the objective is to maximize the critic. 
             \item Soft update the target networks:
             \[
-                w' \leftarrow \tau w + (1-\tau)w'
+                w^- \leftarrow \tau w + (1-\tau)w^-
             \]
             \[
-                \theta' \leftarrow \tau \theta + (1-\tau)\theta'
+                \theta^- \leftarrow \tau \theta + (1-\tau)\theta^-
             \]
         \end{enumerate}
     \end{enumerate}
@@ -1251,7 +1290,6 @@ DDPG is an off-policy, actor-critic algorithm for continuous action spaces. It u
 
 \section{Soft Actor-Critic (SAC) }
 
-\subsection{Quick analogy}
 \textbf{Standard RL:} ``I'll keep doing what seems best right now.'' \\
 \textbf{SAC:} ``I'll do what seems best on average, but keep some healthy randomness so I don't miss a better long-term strategy.''
 
@@ -1264,18 +1302,27 @@ Here, the entropy of the policy $\pi$ at state $S_t$ is defined as:
 $$
 \mathcal{H}(\pi(\cdot|S_t)) = -\sum_a \pi(a|S_t) \log \pi(a|S_t)
 $$
-Entropy measures the randomness in the policy's action choices. The parameter $\alpha$ is the temperature, which determines how much weight is given to the entropy bonus relative to the reward.
+Entropy measures the randomness in the policy's action choices. The parameter $\alpha$ is the temperature, which determines how much weight is given to the entropy bonus relative to the reward.\\
 
-SAC is a model-free, off-policy,actor-critic algorithm that aims to find a policy that not only maximizes the reward but also has high entropy. This encourages exploration and leads to more robust, stable policies.
-The objective function is augmented with an entropy term:
-$$ \pi^* = \arg\max_\pi \sum_t \mathbb{E}_{\rho_\pi} [r(s_t, a_t) + \alpha \mathcal{H}(\pi(\cdot|s_t))] $$
-where $\mathcal{H}(\pi(\cdot|s_t)) = \mathbb{E}_{a_t \sim \pi} [-\log \pi(a_t|s_t)]$ is the policy's entropy and $\alpha$ is the temperature parameter that controls the trade-off between reward and entropy.
+\begin{itemize}
+    \item \textbf{SAC is a model-free, off-policy, actor-critic algorithm that aims to find a policy that not only maximizes the reward but also has high entropy.}
+    \item This encourages exploration and leads to more stable policies.
+\end{itemize}
+
+\begin{itemize}
+    \item The objective function is augmented with an entropy term:
+    $$ \pi^* = \arg\max_\pi \sum_t \mathbb{E}_{\rho_\pi} [r(s_t, a_t) + \alpha \mathcal{H}(\pi(\cdot|s_t))] $$
+    where $\mathcal{H}(\pi(\cdot|s_t)) = \mathbb{E}_{a_t \sim \pi} [-\log \pi(a_t|s_t)]$ is the policy's entropy and,
+    \item $\alpha$ is the temperature parameter that controls the trade-off between reward and entropy.
+\end{itemize}
 
 \subsection{Soft Value Functions}
 The Bellman equations are modified to include the entropy term, resulting in ``soft" value functions.
 \begin{itemize}
+\textbf{Generally} : 
+$$ V^\pi(s_t) = \mathbb{E}_{a_t \sim \pi} [Q^\pi(s_t, a_t)] $$
     \item \textbf{Soft state-value}:
-    $$ V^\pi(s_t) = \mathbb{E}_{a_t \sim \pi} [Q^\pi(s_t, a_t) - \alpha \log \pi(a_t|s_t)] $$
+    $$ V^\pi(s_t) = \mathbb{E}_{a_t \sim \pi} [Q^\pi(s_t, a_t) - \alpha \log \pi(a_t|s_t)] $$  
     \item \textbf{Soft action-value}:
     $$ Q^\pi(s_t, a_t) = r(s_t, a_t) + \gamma \mathbb{E}_{s_{t+1}} [V^\pi(s_{t+1})] $$
 \end{itemize}
@@ -1288,8 +1335,8 @@ SAC uses a stochastic policy and two Q-networks to mitigate overestimation bias.
     \item \textbf{Critic Update}: Update both Q-networks to minimize the MSE loss against a soft Q-target, which is constructed using the minimum of the two Q-networks to reduce overestimation.
     $$ J_Q(\phi) = \mathbb{E}_{(s,a,s') \sim D} \left[ \left( Q_\phi(s,a) - \left(r + \gamma \left( \min_{j=1,2} Q_{\phi_j^-}(s', \tilde{a}') - \alpha \log \pi_\theta(\tilde{a}'|s') \right)\right) \right)^2 \right] $$
     where $\tilde{a}'$ is a sampled action from the current policy.
-    \item \textbf{Actor Update}: Update the actor to minimize the expected Kullback-Leibler (KL) divergence to the exponentiated Q-function, which simplifies to maximizing the entropy-regularized objective.
-    $$ J_\pi(\theta) = \mathbb{E}_{s \sim D, a \sim \pi_\theta} [\alpha \log \pi_\theta(a|s) - Q_\phi(s,a)] $$
+    \item \textbf{Actor Update}: Update the actor to minimize the expected Kullback-Leibler (KL) divergence the softmax over Q-Values and the policy $\pi_\theta$ to maximize the objective $ J_\pi(\theta)$  . 
+    $$ J_\pi(\theta) = \mathbb{E}_{s \sim D, a \sim \pi_\theta} [ Q_\phi(s,a) - \alpha \log \pi_\theta(a|s)] $$
     For continuous actions, a \textbf{reparameterization trick} is used to make this differentiable.
     \item Update the temperature parameter $\alpha$ (optional) and perform soft updates on the target networks.
 \end{enumerate}
@@ -1577,12 +1624,17 @@ A variety of methods exist to solve CMDPs, including policy constraint algorithm
 \subsubsection{Constrained Policy Optimization (CPO)}
 CPO is an extension of the TRPO algorithm that adds a safety constraint. It finds a policy update that maximizes the objective while ensuring the KL divergence from the old policy and the cumulative cost are within specified bounds.
 $$
-\max_\theta \mathbb{E}_{\pi_{\theta_{\text{old}}}} \left[ \frac{\pi_\theta(a|s)}{\pi_{\theta_{\text{old}}}(a|s)} A_{\pi_{\theta_{\text{old}}}}(s, a) \right]
+\max_{\theta} \mathcal{J}^{TRPO}(\theta) = \mathbb{E}_{\pi_{old}}\left[ \frac{\pi_{\theta}(a_i|s_i)}{\pi_{old}(a_i|s_i)}A_{\pi_{old}}(s_i, a_i) \right] 
 $$
 \begin{center}
 s.t. $\mathbb{E}_{\pi_{\theta_{\text{old}}}} [D_{KL}(\pi_{\theta_{\text{old}}} || \pi_\theta)] \leq \delta \quad \text{and} \quad \mathbb{E}_{\pi_{\theta_{\text{old}}}} [C(s, a)] \leq b_i$
 \end{center}
 
+\textbf{Insights from TRPO}:
+\begin{itemize}
+    \item Monotonic Performance Improvement (each time the policy is updated, its expected return (or value) will be at least as good as, and typically better than, the previous policy).
+    \item Satisfy constraints
+\end{itemize}
 \subsubsection{Primal-Dual Methods (Lagrangian)}
 Lagrangian methods convert a constrained optimization problem into an unconstrained one by introducing a Lagrange multiplier $\lambda$ for each constraint. The objective is to find a saddle point of the Lagrangian function.
 $$ \min_\lambda \max_\theta \mathcal{L}(\theta, \lambda) = \mathbb{E}_\pi [R(s, a)] - \lambda \left( \mathbb{E}_\pi [C(s, a)] - b \right) $$
@@ -1595,6 +1647,81 @@ The method iteratively updates the policy to maximize this objective and the mul
     \item Update the Lagrange multiplier: $\lambda \leftarrow \lambda + \alpha \left( \mathbb{E}_\pi [C(s, a)] - b \right)$. This increases $\lambda$ if the cost constraint is violated, penalizing future cost increases.
 \end{enumerate}
 
+\textbf{Primal-Dual Methods: Example}
+
+\begin{itemize}
+    \item \textbf{Primal Problem:}  
+    The original constrained optimization problem is
+    $$
+    \max f(x) = 3x \qquad \text{subject to } x - 4 \leq 0 \quad (\text{or } x \leq 4).
+    $$
+    The optimal value is achieved at $x=4$, giving $f(4) = 12$.
+
+    \item \textbf{Unconstrained Lagrangian:}  
+    The constraint is incorporated using a Lagrange multiplier $\lambda$, creating the Lagrangian:
+    $$
+    L(x, \lambda) = 3x - \lambda(x - 4).
+    $$
+
+    \item \textbf{Dual Problem:}  
+    The dual method reverses the order of optimization:
+    $$
+    \min_{\lambda} \max_{x} \left[ 3x - \lambda(x - 4) \right].
+    $$
+    We first maximize with respect to $x$ for fixed $\lambda$, and then minimize with respect to $\lambda$.
+\end{itemize}
+
+\textbf{Solving via Table Analysis}
+
+The values of $L(x, \lambda)$ are computed in a table for $x = 3, 4, 5$ and $\lambda = 2, 3, 4$:
+
+\begin{center}
+\begin{tabular}{c|ccc}
+$\lambda$ & $x = 3$ & $x = 4$ & $x = 5$ \\
+\hline
+2 & 10 & 12 & 13 \\
+3 & 12 & 12 & 12 \\
+4 & 13 & 12 & 11 \\
+\end{tabular}
+\end{center}
+
+\vspace{1em}
+\textbf{Optimization Steps:}
+\begin{itemize}
+    \item For each $\lambda$, find the maximum value in the row (max over $x$).
+    \item For $\lambda = 2$: $\max \{10, \, 12, \, 13\} = 13$
+    \item For $\lambda = 3$: $\max \{12, \, 12, \, 12\} = 12$
+    \item For $\lambda = 4$: $\max \{13, \, 12, \, 11\} = 13$
+    \item Now, minimize these maxima over $\lambda$: $\min \{13, 12, 13\} = 12$
+\end{itemize}
+So, $\lambda^* = 3$ yields the minimum of the maximum Lagrangian value. \\ 
+
+\textbf{Conclusion}
+
+\begin{itemize}
+    \item $\lambda = 3$ is the optimal solution to the dual problem,
+    \item The optimal dual value equals the optimal primal value ($12$).
+    \item This confirms strong duality for this simple linear program.
+\end{itemize}
+
+\textbf{Summary Table:} \\ 
+
+\begin{tabular}{|c|c|}
+\hline
+$\lambda$ & $\max_x L(x, \lambda)$ \\
+\hline
+2 & 13 \\
+\hline
+3 & 12 \\
+\hline
+4 & 13 \\
+\hline
+\end{tabular}
+
+Optimal $\lambda^* = 3$, value $=12$. \\ 
+
+\textbf{Limitations of Lagrangian:} \\ 
+You can't guarantee that the safety constraint will be satisfied. For example, your budget may be to not exceed 5 speed violations in an autonomous car, but with a Lagrangian method there can still be a 6th violation, because it only enforces the limit on average rather than in every episode.
 \subsubsection{State Augmentation (SauteRL)}
 This method reformulates a CMDP as a standard MDP by augmenting the state with a ``safety budget." The budget decreases with each cost incurred.
 \begin{itemize}
@@ -1611,7 +1738,43 @@ The Meta-Algorithm for Safe Exploration (MASE) is a high-level approach that gui
     \item \textbf{Safe Actions}: A set of ``safe" actions is defined as those where the estimated cost plus uncertainty does not exceed the safety threshold, i.e., $A^+ = \{a \mid \mu(s, a) + \Gamma(s, a) \leq b_i\}$.
     \item \textbf{Exploration}: The agent's policy is restricted to choosing actions from the safe set $A^+$. If no safe actions are available, an emergency action (e.g., stopping) is taken.
 \end{itemize}
-This ensures the agent acts safely during training while learning a policy that is also safe at convergence.
+This ensures the agent acts safely during training while learning a policy that is also safe at convergence.  
+
+\subsubsection*{Definition of a Safe Action in MASE} \\ 
+An action is safe if:
+\[ a \in \mathcal{A} \quad \text{and} \quad \mu(s_i, a) + \Gamma(s_i, a) \le b_i \]
+where:
+\begin{itemize}
+    \item $\mu(s_i, a) \to$ predicted safety cost (learned with a neural net, for example)
+    \item $\Gamma(s_i, a) \to$ uncertainty bound on the prediction. ($\Gamma$ - Capital Gamma)
+    \item $b_i \to$ maximum allowed cost
+\end{itemize}
+Safety means: Even in the worst case (prediction + uncertainty), the cost stays within the limit.
+
+\subsubsection*{How MASE Works (Step-by-Step)}  \\ 
+At each time step $h$:
+\begin{enumerate}
+    \item The agent is in state $s_h$.
+    \item It looks at the set of safe actions:
+    \[ \mathcal{A}^+_h = \{ a \mid \mu(s_h, a) + \Gamma(s_h, a) \le b \} \]
+    \item If safe actions exist ($\mathcal{A}^+_h \neq \emptyset$):
+    \begin{itemize}
+        \item Pick one (via your RL policy) and execute it.
+        \item Continue exploring.
+    \end{itemize}
+    \item If no safe action exists ($\mathcal{A}^+_h = \emptyset$):
+    \begin{itemize}
+        \item Trigger emergency stop action $\hat{a}$ (from Assumption 2).
+        \item This keeps the agent in a safe state but comes with a large penalty so it learns to avoid such dead ends.
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection*{Why it works:}  \\ 
+This guarantees almost sure safety because at every step:
+\begin{itemize}
+    \item You either take a provably safe action.
+    \item Or you stop immediately before violating constraints.
+\end{itemize}
 
 \subsection{Frontiers in Safe RL}
 Safe RL is a rapidly evolving field with ongoing research in several key areas:
