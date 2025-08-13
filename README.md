@@ -82,7 +82,7 @@ The notes are organized into 28 sections, covering the following major areas:
 
 ## Source and Acknowledgements
 
-These notes were generated from the lecture materials for **CSCI 6904 (Deep Reinforcement Learning)** taught at Dalhousie University. All credit for the original content and structure goes to the instructors and curriculum of that course.
+These notes were generated from the lecture materials for **CSCI 6904 (Deep Reinforcement Learning)** taught at [Dalhousie University](https://www.dal.ca/). All credit for the original content and structure goes to the instructors and curriculum of that course.
 
 ## Disclaimer
 
