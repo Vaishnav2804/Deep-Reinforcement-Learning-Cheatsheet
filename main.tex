@@ -922,7 +922,7 @@ At each time $t$, an update for a prior time step $\tau = t - n + 1$ is performe
             \item Execute $a_t$, observe $r_{t+1}$, next state $s_{t+1}$, and done flag $d_{t+1}\in\{0,1\}$.
             \item Store $(s_t,a_t,r_{t+1},s_{t+1},d_{t+1})$ in $\mathcal{B}$.
             \item Sample a mini-batch $\{(s_i,a_i,r_i,s_i',d_i)\}_{i=1}^N$ from $\mathcal{B}$.
-            \item Compute targets: $y_i = r_i + \gamma (1-d_i)\,\max_{a'} Q(s_i',a'; w^-)$.
+            \item Compute targets: $y_i = r_i + \gamma\,\max_{a'} Q(s_i',a'; w^-)$.
             \item Update $w$ by minimizing $L(w)=\frac{1}{N}\sum_i \big(y_i - Q(s_i,a_i;w)\big)^2$ (often Huber loss).
             \item Every $N$ steps: update target, e.g., hard $w^- \leftarrow w$ or Every $K$ steps soft $w^- \leftarrow \tau w^- + (1-\tau)w$.
             \item Optionally anneal $\epsilon$; $t \leftarrow t+1$; $s_t \leftarrow s_{t+1}$.
