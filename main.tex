@@ -2107,75 +2107,99 @@ DDPG is an off-policy algorithm designed for continuous control.
     \textbf{Answer:} DDPG ensures exploration by adding noise (typically from a stochastic process like Ornstein-Uhlenbeck or simple Gaussian noise) to the actions selected by the deterministic actor during the training phase.
 \end{enumerate}
 
-\subsection{Question 9: DDQN vs. SAC: A Mathematical Comparison}
+\subsection{DDPG vs. SAC: A Mathematical Comparison}
 
-\subsubsection*{1. Double DQN (DDQN) Equation}
-DDQN improves over vanilla DQN by separating action selection and evaluation to reduce overestimation bias.
+\subsubsection*{1. Deep Deterministic Policy Gradient (DDPG) Equations}
+DDPG is an off-policy actor-critic algorithm that uses a deterministic policy and a single critic.
 
 \textbf{Target value:}
-$$ y^{\text{DDQN}} = r + \gamma \ Q_{\theta^-} \big( s', \ \arg\max_a Q_{\theta}(s',a) \big) $$
+\[
+    y^{\text{DDPG}} = r + \gamma \ Q_{\theta^-} \big( s', \ \mu_{\phi^-}(s') \big)
+\]
 Where:
 \begin{itemize}
-    \item $Q_{\theta} \to$ online network (used for selection of the best action)
-    \item $Q_{\theta^-} \to$ target network (used for evaluation of that chosen action)
-    \item $r \to$ reward received
-    \item $\gamma \to$ discount factor
+    \item $Q_{\theta} \to$ critic (estimates $Q(s,a)$).
+    \item $Q_{\theta^-} \to$ target critic network.
+    \item $\mu_{\phi} \to$ deterministic actor network.
+    \item $\mu_{\phi^-} \to$ target actor network.
+    \item $r \to$ reward received.
+    \item $\gamma \to$ discount factor.
 \end{itemize}
 
-\textbf{Loss function:}
-$$ L(\theta) = \mathbb{E}_{(s,a,r,s') \sim \mathcal{D}} \left[ \big( Q_{\theta}(s,a) - y^{\text{DDQN}} \big)^2 \right] $$
-\textbf{Key features in the equation:}
+\textbf{Critic loss:}
+\[
+    L(\theta) = \mathbb{E}_{(s,a,r,s') \sim \mathcal{D}} \left[ \big( Q_{\theta}(s,a) - y^{\text{DDPG}} \big)^2 \right]
+\]
+
+\textbf{Actor loss:}
+\[
+    J_{\mu}(\phi) = - \mathbb{E}_{s \sim \mathcal{D}} \left[ Q_{\theta}\big(s, \mu_{\phi}(s)\big) \right]
+\]
+The actor maximizes the critic's Q-value for its chosen actions.
+
+\textbf{Key features:}
 \begin{itemize}
-    \item The $\arg\max_a Q_\theta(s',a)$ assumes a deterministic best action.
-    \item No entropy term -- the algorithm focuses only on expected reward.
+    \item Deterministic policy (no entropy term).
+    \item Single critic network (plus its target copy).
+    \item Policy updates come from deterministic policy gradient.
 \end{itemize}
 
-\subsubsection*{2. Soft Actor-Critic (SAC) Equation}
-SAC comes from the maximum entropy RL framework and adds an entropy bonus directly into the Bellman backup.
+\subsubsection*{2. Soft Actor-Critic (SAC) Equations}
+SAC extends the actor-critic framework with maximum entropy RL and twin critics.
 
 \textbf{Target value (Clipped Double Q-learning):}
-$$ y^{\text{SAC}} = r + \gamma \ \mathbb{E}_{a' \sim \pi_\phi} \Big[ \min_{i \in \{1,2\}} Q_{\theta_i}(s',a') - \alpha \log \pi_\phi(a'|s') \Big] $$
+\[
+    y^{\text{SAC}} = r + \gamma \ \mathbb{E}_{a' \sim \pi_\phi} \Big[ \min_{i \in \{1,2\}} Q_{\theta_i}(s',a') - \alpha \log \pi_\phi(a'|s') \Big]
+\]
 Where:
 \begin{itemize}
-    \item Two critics $Q_{\theta_1}, Q_{\theta_2} \to$ take the minimum to reduce overestimation.
+    \item Two critics $Q_{\theta_1}, Q_{\theta_2}$ --- take the minimum to reduce overestimation.
     \item $\pi_\phi(a|s) \to$ stochastic policy (actor network).
     \item $\alpha \to$ temperature parameter controlling entropy weight.
     \item $-\alpha \log \pi_\phi(a'|s') \to$ entropy bonus (encourages exploration).
 \end{itemize}
 
 \textbf{Critic loss:}
-$$ L(\theta_i) = \mathbb{E}_{(s,a,r,s') \sim \mathcal{D}} \left[ \big( Q_{\theta_i}(s,a) - y^{\text{SAC}} \big)^2 \right], \quad i = 1, 2 $$
+\[
+    L(\theta_i) = \mathbb{E}_{(s,a,r,s') \sim \mathcal{D}} \left[ \big( Q_{\theta_i}(s,a) - y^{\text{SAC}} \big)^2 \right], \quad i = 1, 2
+\]
 
 \textbf{Actor loss:}
-$$ J_\pi(\phi) = \mathbb{E}_{s \sim \mathcal{D}} \left[ \alpha \log \pi_\phi(a|s) - Q_{\theta_1}(s,a) \right] $$
-This directly optimizes the policy toward actions that have:
+\[
+    J_\pi(\phi) = \mathbb{E}_{s \sim \mathcal{D}} \left[ \alpha \log \pi_\phi(a|s) - Q_{\theta_1}(s,a) \right]
+\]
+The actor trades off between high Q-value and high entropy.
+
+\textbf{Key features:}
 \begin{itemize}
-    \item High Q-values (exploitation)
-    \item High entropy (exploration)
+    \item Stochastic policy.
+    \item Two critics with minimum selection.
+    \item Explicit entropy regularization in both target and policy objective.
 \end{itemize}
 
 \subsubsection*{3. Side-by-Side Equation Comparison}
 \begin{tabular}{|l|l|l|}
 \hline
-\textbf{Concept} & \textbf{DDQN} & \textbf{SAC} \\
+\textbf{Concept} & \textbf{DDPG} & \textbf{SAC} \\
 \hline
-\textbf{Action choice in target} & $\arg\max_a Q_\theta(s',a)$ (deterministic) & $a' \sim \pi_\phi(a|s')$ (stochastic) \\
+\textbf{Policy type} & Deterministic $\mu_\phi(s)$ & Stochastic $\pi_\phi(a|s)$ \\
 \hline
-\textbf{Action evaluation in target} & $Q_{\theta^-}(s', a_{\text{best}})$ & $\min(Q_{\theta_1}, Q_{\theta_2})(s',a')$ \\
+\textbf{Action in target} & $\mu_{\phi^-}(s')$ & $a' \sim \pi_\phi(a|s')$ \\
+\hline
+\textbf{Critics} & One critic (and target) & Two critics (min for stability) \\
 \hline
 \textbf{Entropy term} & None & $-\alpha \log \pi_\phi(a'|s')$ \\
 \hline
-\textbf{Critics} & One Q-function (online + target) & Two Q-functions \\
-\hline
-\textbf{Policy update} & Implicit (greedy from Q) & Explicit gradient update of $\pi_\phi$ \\
+\textbf{Policy update} & Maximize Q-value deterministically & Maximize Q-value + entropy \\
 \hline
 \end{tabular}
 
-\subsubsection*{4. Key Takeaways from the Equations}
+\subsubsection*{4. Key Takeaways}
 \begin{itemize}
-    \item In DDQN, the update target is purely: Reward + discounted best Q-value for the next state. "Best" means the deterministic argmax from the online Q-network, evaluated by the target Q-network.
-    \item In SAC, the update target is: Reward + discounted pessimistic estimate ($\min$ of critics) -- entropy term. The ``best'' action is stochastic, drawn from the learned policy.
-    \item The entropy term in SAC's equations keeps the policy probabilistic and exploratory, which DDQN does not do.
+    \item DDPG optimizes a deterministic policy to maximize Q-values, without explicit exploration bonuses.
+    \item SAC optimizes a stochastic policy, balancing exploitation (high Q) and exploration (high entropy).
+    \item SAC's twin-critic and entropy framework make it generally more stable and robust, especially in environments where exploration is important.
 \end{itemize}
+
 
 \end{document}
