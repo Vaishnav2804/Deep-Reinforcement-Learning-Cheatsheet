@@ -1629,26 +1629,21 @@ A common approach is to use a learned model to generate synthetic data, which is
     \item Limits compounding errors with short horizons.
 \end{itemize}
 
-\subsubsection{Model-Based Policy Optimization (MBPO / Mix Real and Model Data)}
-\textbf{Algorithm (MBPO-style):}
+\subsubsection{Dyna-Q Style Algorithm}
+This algorithm uses a model to supplement real-world experience, often in a continuous loop.
+
+\item \textbf{Algorithm:}
 \begin{enumerate}
-    \item Initialize $\mathcal{D}_{\text{env}}$ with real data collected from an initial policy $\pi_\theta$.
-    \item \textbf{Loop:}
-    \begin{enumerate}
-        \item \textbf{Collect real data:} Deploy $\pi_\theta$ in the real environment for $N$ steps and add to $\mathcal{D}_{\text{env}}$.
-        \item \textbf{Model learning:} Train dynamics model $\hat{P}$ on $\mathcal{D}_{\text{env}}$.
-        \item \textbf{Policy updates:}
-        \begin{enumerate}
-            \item Sample states from $\mathcal{D}_{\text{env}}$.
-            \item Generate short rollouts (e.g., $H$ steps) in $\hat{P}$ to produce $\mathcal{D}_{\text{model}}$.
-            \item Create minibatches mixing transitions from $\mathcal{D}_{\text{env}}$ and $\mathcal{D}_{\text{model}}$.
-            \item Update $\pi_\theta$ using an off-policy RL algorithm (e.g., SAC,DQN).
-        \end{enumerate}
-    \end{enumerate}
+    \item Run base policy $\pi_0(a|s)$ in the real environment to collect $D_{\text{env}} = \{(s,a,r,s')\}_i$.
+    \item Learn environment model $f_\eta(s,a)$ using $D_{\text{env}}$.
+    \item Pick states $S_i$ from $D_{\text{env}}$, use $f_\eta(s,a)$ to make short rollouts; add to $D_{\text{model}}$.
+    \item Use both $D_{\text{env}}$ and $D_{\text{model}}$ to update $\pi_\theta(a|s)$ via any off-policy RL algorithm (e.g., DQN, SAC). \colorbox{yellow}{\(\leftarrow\ \text{picks states from both env and the model}\)}
+    \item Deploy $\pi_\theta(a|s)$ in the real environment, appending $(s,a,r,s')$ to $D_{\text{env}}$ and repeat.
 \end{enumerate}
 
+This approach uses short rollouts from the model to avoid accumulating errors and combines real data to anchor learning, leading to more stable performance.
 
-\textbf{Improvement:}
+\item \textbf{Improvement:}
 \begin{itemize}
     \item Combines sample efficiency of model rollouts with realism of real data.
 \end{itemize}
@@ -1659,32 +1654,25 @@ A common approach is to use a learned model to generate synthetic data, which is
     \item Expands exploration coverage without costly real-environment interaction.
 \end{itemize}
 
-\subsubsection{Direct Policy Optimization via Differentiable Models}
-\textbf{Algorithm:}
+\subsubsection{Direct Policy Learning with a Model }
+This approach directly optimizes the policy by backpropagating gradients through the learned dynamics model. The key idea is to treat the environment model as part of the computational graph.
 \begin{enumerate}
-    \item Initialize policy $\pi_\theta$.
-    \item Collect initial dataset $\mathcal{D}_{\text{env}}$ from the real environment.
-    \item \textbf{Loop:}
-    \begin{enumerate}
-        \item \textbf{Model learning:} Train differentiable dynamics model $f_\eta(s,a)$ on $\mathcal{D}_{\text{env}}$.
-        \item \textbf{Policy updates:}
-        \begin{enumerate}
-            \item Simulate $H$-step rollouts entirely through $f_\eta$ starting from sampled states.
-            \item \textbf{Backpropagate }policy gradient through $f_\eta$ to update $\pi_\theta$. \colorbox{yellow}{\(\leftarrow\ \text{key change}\)}
-        \end{enumerate}
-        \item \textbf{(Optional) Collect real data:} Deploy $\pi_\theta$ in the real environment to refresh $\mathcal{D}_{\text{env}}$.
-    \end{enumerate}
+    \item Run the policy $\pi_\theta$ in the real environment to collect a dataset $\mathcal{D}_{env}$.
+    \item Learn a dynamics model $f_\eta(s,a)$ from $\mathcal{D}_{env}$.
+    \item To improve the policy, unroll the policy's actions through the model's dynamics for a few steps. The reward from this unrolling is used to compute a loss.
+    \item Backpropagate the gradients of this loss through the dynamics model and into the policy network to update the policy parameters $\theta$.
+    \item Repeat the process by running the updated policy in the real environment to collect new data.
 \end{enumerate}
+This method can be very sample-efficient, but it can suffer from issues like vanishing or exploding gradients when unrolling over many time steps, and its effectiveness is highly dependent on the accuracy of the learned model.
 
-
-\textbf{Benefit:}
+\item \textbf{Benefit:}
 \begin{itemize}
     \item End-to-end differentiable optimization.
 \end{itemize}
 \textbf{Downside:}
 \begin{itemize}
     \item Sensitive to model inaccuracies.
-    \item Gradient instability for large $H$.
+    \item Gradient instability for large $H$ (Vanishing/Exploding gradients).
 \end{itemize}
 
 \subsubsection*{Summary Table}
@@ -1703,30 +1691,6 @@ Direct BP & Backprop through model & Gradient-based planning & Numerical instabi
 \end{center}
 
 
-\subsection{Dyna-Q Style Algorithm}
-This algorithm uses a model to supplement real-world experience, often in a continuous loop.
-
-\item \textbf{Algorithm:}
-\begin{enumerate}
-    \item Run base policy $\pi_0(a|s)$ in the real environment to collect $D_{\text{env}} = \{(s,a,r,s')\}_i$.
-    \item Learn environment model $f_\eta(s,a)$ using $D_{\text{env}}$.
-    \item Pick states $S_i$ from $D_{\text{env}}$, use $f_\eta(s,a)$ to make short rollouts; add to $D_{\text{model}}$.
-    \item Use both $D_{\text{env}}$ and $D_{\text{model}}$ to update $\pi_\theta(a|s)$ via any off-policy RL algorithm (e.g., DQN, SAC).
-    \item Deploy $\pi_\theta(a|s)$ in the real environment, appending $(s,a,r,s')$ to $D_{\text{env}}$ and repeat.
-\end{enumerate}
-
-This approach uses short rollouts from the model to avoid accumulating errors and combines real data to anchor learning, leading to more stable performance.
-
-\subsection{Direct Policy Learning with a Model }
-This approach directly optimizes the policy by backpropagating gradients through the learned dynamics model. The key idea is to treat the environment model as part of the computational graph.
-\begin{enumerate}
-    \item Run the policy $\pi_\theta$ in the real environment to collect a dataset $\mathcal{D}_{env}$.
-    \item Learn a dynamics model $f_\eta(s,a)$ from $\mathcal{D}_{env}$.
-    \item To improve the policy, unroll the policy's actions through the model's dynamics for a few steps. The reward from this unrolling is used to compute a loss.
-    \item Backpropagate the gradients of this loss through the dynamics model and into the policy network to update the policy parameters $\theta$.
-    \item Repeat the process by running the updated policy in the real environment to collect new data.
-\end{enumerate}
-This method can be very sample-efficient, but it can suffer from issues like vanishing or exploding gradients when unrolling over many time steps, and its effectiveness is highly dependent on the accuracy of the learned model.
 
 
 \section{Model Based - Decision-Time Planning}
