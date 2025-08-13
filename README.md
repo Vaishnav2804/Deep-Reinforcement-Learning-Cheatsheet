@@ -1,5 +1,5 @@
 # Deep Reinforcement Learning Cheat Sheet!
-- Contains topics related to :MDPs, Bellman equations, DQN, PPO, SAC, offline/safe RL, their math and pseudocode.
+- Contains topics related to : MDPs, Bellman equations, DQN, PPO, SAC, offline/safe RL, their math and pseudocode all summarized in one PDF.
 
 - [Deep Reinforcement Learning Cheat Sheet (PDF)](https://github.com/Vaishnav2804/Deep-Reinforcement-Learning-Cheatsheet/blob/main/Deep_RL_notes.pdf) for the notes/cheatsheet.
 
