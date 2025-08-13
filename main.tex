@@ -1065,7 +1065,7 @@ If we directly use $A_{t+1}$ from the Experience Replay Buffer, we are implicitl
         \item Receive initial state $S$.
         \item For $t=1, T$:
         \begin{enumerate}
-            \item Select action $A = \mu_\theta(S) + \mathcal{N}_t$.
+            \item Select action $A = \mu_\theta(S) + \mathcal{N}_t$ (Noise).
             \item Execute action $A$ and observe new state $S'$ and reward $R$.
             \item Store transition $(S, A, R, S')$ in $\mathcal{B}$.
             \item Sample a random minibatch of $N$ transitions from $\mathcal{B}$.
@@ -1227,10 +1227,47 @@ A2C is a stable on-policy method that reduces variance compared to REINFORCE by 
     $$ \theta \leftarrow \theta + \alpha_\theta \nabla_\theta J(\theta) $$
 \end{enumerate}
 
+\subsection{PPO - Broken Versions Discussions}
+
+
+\subsection*{1. PPO v0.5 --- Broken}
+\textbf{What it does:}
+\begin{itemize}
+    \item Runs like a standard Advantage Actor-Critic (A2C) update but just uses new parameters $\theta$ every iteration:
+    \[
+        \nabla J(\theta) \approx \frac{1}{N} \sum \nabla_\theta \log \pi_\theta(a_i|s_i) \, \hat{A}(s_i,a_i)
+    \]
+    \item Data is collected with $\pi_{\theta_{\text{old}}}$, but the log-probability ratio $\frac{\pi_\theta}{\pi_{\theta_{\text{old}}}}$ is not used --- it ignores that the policy changed between data collection and gradient computation.
+\end{itemize}
+
+\textbf{Why is this broken:}
+\begin{itemize}
+    \item Large gradient steps can move $\pi_\theta$ far from $\pi_{\theta_{\text{old}}}$ in one update.
+    \item On-policy assumption is violated because the collected batch no longer reflects the updated policy.
+    \item Can cause destructive policy updates (performance collapse after one bad step).
+\end{itemize}
+
+\subsection*{2. PPO v0.8 --- Still Broken (But Closer)}
+\textbf{What it adds:}
+\begin{itemize}
+    \item Introduces the ratio term:
+    \[
+        J_{\text{PPO}}(\theta) = \mathbb{E}_{\pi_{\theta_{\text{old}}}} \left[ \frac{\pi_\theta(a|s)}{\pi_{\theta_{\text{old}}}(a|s)} \, \hat{A}_{\pi_{\theta_\text{old}}}(s,a) \right]
+    \]
+    \item This is the importance-sampled surrogate objective from TRPO theory.
+\end{itemize}
+
+\textbf{Why still broken:}
+\begin{itemize}
+    \item The ratio is used, but there’s no constraint or clipping --- the ratio can still blow up.
+    \item High variance and instability remain because a single large update can overly increase/decrease action probabilities.
+\end{itemize}
+
+
 \subsection{Trust Region Policy Optimization (TRPO)}
 Policy gradient methods are susceptible to large updates that can destabilize training. If a policy update is too large, it can cause a catastrophic drop in performance. \\
 
-TRPO addresses this by introducing the concept of a "trust region." It aims to find the largest possible step that improves the policy, while ensuring that the new policy is not too far from the old policy. "Too far" is measured by the Kullback-Leibler (KL) divergence.
+TRPO addresses this by introducing the concept of a ``trust region." It aims to find the largest possible step that improves the policy, while ensuring that the new policy is not too far from the old policy. "Too far" is measured by the Kullback-Leibler (KL) divergence.
 
 $$ \max_\theta \mathbb{E}_{\pi_{\theta_{old}}} \left[ \frac{\pi_\theta(A_t|S_t)}{\pi_{\theta_{old}}(A_t|S_t)} A_{\pi_{\theta_{old}}}(S_t, A_t) \right] $$
 $$ \text{s.t. } \mathbb{E}_{\pi_{old}} [D_{KL}(\pi_{old} || \pi_\theta)] \leq \delta $$
@@ -1250,6 +1287,33 @@ $$ J^{PPO} (\theta) =  \max_\theta \mathbb{E}_{\pi_{\theta_{old}}} \left[ \min\l
 \begin{itemize}
     \item $\epsilon$ is a hyperparameter (e.g., 0.1 or 0.2) that defines the ``clipping range."
 \end{itemize}
+
+\begin{itemize}
+    \item If Advantage is positive:
+    \[
+        J^{PPO}(\theta) = \mathbb{E}_{\pi_{\theta_{\text{old}}}}
+        \left[
+            \min\left(
+                \frac{\pi_\theta(A_t|S_t)}{\pi_{\theta_{\text{old}}}(A_t|S_t)},
+                1 + \epsilon
+            \right)
+            A_{\pi_{\theta_{\text{old}}}}(S_t, A_t)
+        \right]
+    \]
+    
+    \item If Advantage is negative:
+    \[
+        J^{PPO}(\theta) = \mathbb{E}_{\pi_{\theta_{\text{old}}}}
+        \left[
+            \max\left(
+                \frac{\pi_\theta(A_t|S_t)}{\pi_{\theta_{\text{old}}}(A_t|S_t)},
+                1 - \epsilon
+            \right)
+            A_{\pi_{\theta_{\text{old}}}}(S_t, A_t)
+        \right]
+    \]
+\end{itemize}
+
 
 where $r_t(\theta) = \frac{\pi_\theta(A_t|S_t)}{\pi_{\theta_{old}}(A_t|S_t)}$ is the probability ratio and $\hat{A}_t$ is the advantage estimate. The `clip` function prevents the policy from making excessively large changes, thereby avoiding catastrophic updates.
 
