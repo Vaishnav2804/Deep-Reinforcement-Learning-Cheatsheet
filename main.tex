@@ -150,8 +150,8 @@ An agent's representation of its environment.
     \item \textbf{Policy-based}: A policy, but no value function.
     \item \textbf{Value-based}: A value function, with an implicit policy.
     \item \textbf{Actor-Critic}: Both a policy and a value function.
-    \item \textbf{Model-free}: A policy or value function, but no model.
-    \item \textbf{Model-based}: A policy or value function, plus a model.
+    \item \textbf{Model-free}: Learns policy or value function, but no model. Learns directly from experience without building model of the environment.
+    \item \textbf{Model-based}: A policy or value function, plus a model. Learns the $p(s',r|s,a)$ (state transition probability and the reward) and uses it for planning.
 \end{itemize}
 \begin{tabular}{|p{0.15\linewidth}|p{0.15\linewidth}|p{0.2\linewidth}|p{0.2\linewidth}|p{0.2\linewidth}|}
 \hline
@@ -202,6 +202,22 @@ One-step MDPs are defined as a process where an agent:
     \item Takes an action $a$ sampled from the policy $\pi_\theta(a|s)$.
     \item Receives a reward $r = R_{s,a}$ and the episode terminates.
 \end{itemize}
+
+\subsubsection*{Example: An online ad system} \\
+
+\begin{itemize}
+    \item States = user contexts: \{sports-fan, tech-enthusiast, foodie\}.
+    \item The platform sees users with frequencies: $d(\text{sports}) = 0.5$, $d(\text{tech}) = 0.3$, $d(\text{foodie}) = 0.2$ (this is $d(s)$).
+    \item Each time a user arrives:
+    \begin{itemize}
+        \item The system observes $s$ sampled from $d(s)$.
+        \item Chooses an ad (action).
+        \item Gets a click/no-click reward.
+        \item The interaction ends.
+    \end{itemize}
+\end{itemize}
+
+
 
 The objective is to maximize the expected reward, given by:
 $$
@@ -384,7 +400,17 @@ This algorithm trains both the actor and the critic networks simultaneously usin
 \subsubsection{Network Designs}
 \begin{itemize}
     \item \textbf{Two-Network Design}: The actor and critic are two separate neural networks with their own parameters.
-    \item \textbf{Shared-Network Design}: A single network is used, with a shared trunk that processes the state input, and two separate heads for outputting the policy (actor) and the value estimate (critic). This can be more parameter-efficient.
+    \item \textbf{Shared-Network Design}: A single network is used, with a shared trunk that processes the state input, and two separate heads for outputting the policy (actor) and the value estimate (critic). This can be more parameter-efficient. \\
+
+    A shared network design is considered parameter efficient because it uses each parameter (a weight in the model) for many different parts of the task.
+
+This approach reduces the total number of parameters required. This, in turn, leads to several benefits for the model, including:
+\begin{itemize}
+\item Faster processing
+\item Less memory usage
+\item Better generalization to new tasks
+\end{itemize}
+This idea is a core principle in modern deep learning and multi-task learning systems.
 \end{itemize}
 
 \section{Dynamic Programming (DP) }
@@ -400,7 +426,7 @@ This algorithm trains both the actor and the critic networks simultaneously usin
 \subsection{Iterative Policy Evaluation (Prediction)}
 ``If I follow this strategy, how good is each situation I'll encounter?'' This process does not alter the policy; it simply evaluates it. The algorithm estimates the ``value'' (long-term expected reward) of each state under a fixed policy $\pi$.\\
 
-\textbf{Why is this useful?} You need to know if a policy is good before improving it. This is the "prediction" part of RL.\\
+\textbf{Why is this useful?} You need to know if a policy is good before improving it. This is the ``prediction" part of RL.\\
 
 \textbf{Input:} An MDP $\langle \mathcal{S}, \mathcal{A}, P, R, \gamma \rangle$ and a policy $\pi$.
 
@@ -421,9 +447,9 @@ It operates by alternating between evaluating the current policy and improving i
 
 \textbf{Why it is useful:}
 Policy iteration is a control method, not just a prediction one. Its goal is to find the best possible strategy to maximize long-term rewards, making it a foundational algorithm for solving control problems in reinforcement learning.\\ \\
-\textbf{Input:} MDP $\langle \mathcal{S}, \mathcal{A}, P, R, \gamma \rangle$.
+\textbf{Input:} MDP $\langle \mathcal{S}, \mathcal{A}, P, R, \gamma \rangle$.\\
 
-\textbf{Output:} $v^*$, $\pi^*$.
+\textbf{Output:} $v^*$, $\pi^*$. 
 \begin{enumerate}
     \item Initialize $\pi_0$ arbitrarily (e.g., random actions).
     \item Policy Evaluation: Compute $v_{\pi_k}$ using iterative evaluation (section 9.2).
@@ -437,14 +463,23 @@ Similar to Policy Iteration, this algorithm finds an optimal policy $\pi^*$ and 
 \textbf{Why it is useful}
 Value Iteration is a control method: it not only predicts but also finds the best strategy. It is simpler and often converges faster than Policy Iteration for large problems because it does not require a separate, exhaustive policy evaluation phase -- because it combines policy improvement and evaluation into a single update.\\ 
 
-\begin{itemize}
+\begin{enumerate}
     \item Initialize $v_0(s) = 0$.
     \item Repeat until convergence:
     $v_{k+1}(s) = \max_a \sum_{s',r} p(s',r|s,a) [r + \gamma v_k(s')]$.
     \item Once converged, get Optimal policy: $\pi^*(s) = \arg\max_a \sum_{s',r} p(s',r|s,a) [r + \gamma v^*(s')]$.
-\end{itemize}
+\end{enumerate}
 
 \section{Asynchronous Dynamic Programming}
+
+Asynchronous value iteration is a method for finding the best policy in a Markov Decision Process (MDP) by updating the value of states one at a time, or in small groups, without waiting for a full sweep of all states. This contrasts with traditional, synchronous methods that update all states simultaneously. This flexibility often leads to faster convergence, especially for large state spaces.
+
+\subsection*{How It Works}
+Imagine a problem of finding the shortest path on a map with many cities (states).
+
+\textbf{Synchronous Value Iteration} would be like a team of people simultaneously calculating the shortest distance from every single city to a destination. They all work on their assigned city at the same time and then, after everyone has finished, they collectively share and update their findings. If the map has a million cities, this is inefficient because the entire team must wait for the slowest person to finish their calculation before the next round of updates can begin.
+
+\textbf{Asynchronous Value Iteration} is like having the same team work independently. One person calculates the distance for City A, another for City B, and so on. As soon as one person finds a new, better route for their city, they immediately update that city's value. This new information is instantly available for everyone else to use in their ongoing calculations. This continuous and immediate sharing of information allows the process to converge more quickly because no one is idle, waiting for the entire set of calculations to complete.
 
 \subsection{Synchronous Dynamic Programming}
 \begin{itemize}
@@ -491,8 +526,8 @@ Value Iteration is a control method: it not only predicts but also finds the bes
 \begin{verbatim}
 for iteration k = 1..K:
     for each selected state s (order may vary):
-        v(s) ← max_a Σ_{s', r} p(s', r | s, a) [r + γ v(s')]
 \end{verbatim}
+\quad v(s) ← $max_a Σ_{s', r} p(s', r | s, a) [r + γ v(s')]$
 
 
 \section{Model-Free Prediction }
@@ -552,8 +587,26 @@ How many alternative actions or transitions are considered in each update.
     \item TD($\lambda$) averages several $n$-step returns, with weights $\lambda^{n-1}$.
     \item When $\lambda=0$: Only uses 1-step TD (TD(0)).
     \item When $\lambda=1$: Uses full return (Monte Carlo).
-    \item At $\lambda=1/2$: Each longer return is included but weighted less: 1-step gets $1/2^0=1$; 2-step gets $1/2^1=0.5$; 3-step $1/2^2=0.25$, etc.
+    \item At $\lambda = \frac{1}{2}$: Each longer return is included but weighted less. 
+The 1-step return gets weight $1/2^{0} = 1$, the 2-step return gets weight $1/2^{1} = 0.5$, 
+the 3-step return gets weight $1/2^{2} = 0.25$, and so on.
+
 \end{itemize}
+
+$$
+G_{t:t+n} \doteq R_{t+1} + \gamma R_{t+2} + \dots + \gamma^{n-1}R_{t+n} + \gamma^{n}\hat{v}(S_{t+n}, \mathbf{w}_{t+n-1}), \quad 0 \leq t \leq T-n,
+$$
+
+\[
+\colorbox{yellow}{$
+G_{t}^{\lambda} = (1-\lambda) \sum_{n=1}^{T-t-1} \lambda^{n-1}G_{t:t+n} + \lambda^{T-t-1}G_{t}
+$}
+\]
+
+
+$$
+\mathbf{w}{t+1} \doteq \mathbf{w}{t} + \alpha \left[G_{t}^{\lambda} - \hat{v}(S_t, \mathbf{w}_t)\right] \nabla\hat{v}(S_t, \mathbf{w}_t), \quad t=0, \dots, T-1.
+$$
 
 \subsection{Easy Example}
 Suppose an episode starts in state $S_0$, and we observe:  
@@ -615,12 +668,14 @@ We consider a Markov Decision Process (MDP) with a finite state space $\mathcal{
 
 Monte Carlo (MC) control improves a policy using returns from complete sampled episodes, following the policy it is evaluating (typically with $\epsilon$-greedy exploration).
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.5\linewidth]{epsilon_greedy.png}
-    \caption{Enter Caption}
-    \label{fig:placeholder}
-\end{figure}
+\[
+\pi'(S_t) =
+\begin{cases}
+\arg\max_a Q(S_t, a), & \text{with probability } 1 - \epsilon, \\
+\text{a random action}, & \text{with probability } \epsilon
+\end{cases}
+\]
+
 
 \subsubsection{Concept:}
 \begin{itemize}
