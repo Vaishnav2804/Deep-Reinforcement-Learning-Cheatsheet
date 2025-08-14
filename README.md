@@ -1,10 +1,13 @@
 # Deep Reinforcement Learning Cheat Sheet!
+- Contains topics related to : MDPs, Bellman equations, DQN, PPO, SAC, offline, Safe Reinforcement Learning, their math and pseudocode - All summarized in one PDF.
 
-Open [Deep_RL_notes.pdf](https://github.com/Vaishnav2804/Deep-Reinforcement-Learning-Cheatsheet/blob/main/Deep_RL_notes.pdf) for the cheatsheet.
+- [Deep Reinforcement Learning Cheat Sheet (PDF)](https://github.com/Vaishnav2804/Deep-Reinforcement-Learning-Cheatsheet/blob/main/Deep_RL_notes.pdf) for the notes/cheatsheet.
 
-Feel free to make changes and contribute to the existing one. Motive is to make it more smaller and clearer.
+- Feel free to make changes and contribute to the existing one. Motive is to make it more smaller and clearer.
 
-Please star this Repo if this cheatsheet helped you 🙂
+- Please star this Repo if this cheatsheet helped you 🙂
+  
+- If you are a Dal grad student taking the Deep Reinforcement Learning course, then this is for you!
 
 <hr>
 
@@ -14,7 +17,7 @@ This resource is designed for students, researchers, and practitioners who want 
 
 ## About the Document
 
-The `Deep_RL_notes.pdf` is a 53-page document that synthesizes a semester's worth of deep reinforcement learning knowledge into a single, well-organized file. It progresses logically from the basic formalisms of RL to the cutting-edge algorithms and research areas that define the field today.
+The `Deep_RL_notes.pdf` is a 60-page document that synthesizes a semester's worth of deep reinforcement learning knowledge into a single, well-organized file. It progresses logically from the basic formalisms of RL to the cutting-edge algorithms and research areas that define the field today.
 
 ## Key Features
 
@@ -81,7 +84,7 @@ The notes are organized into 28 sections, covering the following major areas:
 
 ## Source and Acknowledgements
 
-These notes were generated from the lecture materials for **CSCI 6904 (Deep Reinforcement Learning)** taught at Dalhousie University. All credit for the original content and structure goes to the instructors and curriculum of that course.
+These notes were generated from the lecture materials for **CSCI 6904 (Deep Reinforcement Learning)** taught at [Dalhousie University](https://www.dal.ca/). All credit for the original content and structure goes to the instructors and curriculum of that course.
 
 ## Disclaimer
 

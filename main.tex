@@ -11,7 +11,7 @@
 
 
 \title{Reinforcement Learning Notes}
-\author{Generated from Lecture Notes for CSCI 6904 (Deep Reinforcement Learning)}
+\author{Lecture Notes for CSCI 6904 (Deep Reinforcement Learning)}
 \date{\today}
 
 
@@ -239,6 +239,62 @@ This approach differs from Supervised Learning (SL) Maximum Likelihood in that t
     \item Compute the gradient estimate: $\nabla_\theta J(\theta) = \frac{1}{N} \sum_i \nabla_\theta \log \pi_\theta(A_i|S_i) R_{S_i,A_i}$.
     \item Update the policy parameters: $\theta \leftarrow \theta + \alpha \nabla_\theta J(\theta)$.
 \end{enumerate}
+
+\subsection{Step-by-Step Derivation of the Policy Gradient \colorbox{yellow}{(Very important)}}
+\label{sec:policy_gradient_derivation}
+\begin{enumerate}
+    \item \textbf{Objective Function: Expected Reward} \\
+    We want to maximize the expected reward under the current policy:
+    \begin{equation}
+    J(\theta) = \mathbb{E}_{\pi_\theta}[r] = \sum_{s} d(s) \sum_{a} \pi_\theta(a|s) R_{s,a}
+    \end{equation}
+    Here:
+    \begin{itemize}
+        \item $d(s)$ is the distribution over states.
+        \item $\pi_\theta(a|s)$ is the probability of taking action $a$ in state $s$ under policy parameters $\theta$.
+        \item $R_{s,a}$ is the reward received when taking action $a$ in state $s$.
+    \end{itemize}
+
+    \item \textbf{Taking the Gradient} \\
+    We want to compute the gradient $\nabla_\theta J(\theta)$ so we can improve the policy using gradient ascent.
+    \begin{equation}
+    \nabla_\theta J(\theta) = \sum_{s} d(s) \sum_{a} \nabla_\theta \pi_\theta(a|s) R_{s,a}
+    \end{equation}
+    Note: $d(s)$ and $R_{s,a}$ do not depend on $\theta$, so they are treated as constants.
+
+    \item \textbf{Using the Log Derivative Trick} \\
+    Start with the chain rule. We want the gradient of a log:
+    \[
+    \nabla_\theta \log \pi_\theta(a|s) = \frac{1}{\pi_\theta(a|s)}\nabla_\theta \pi_\theta(a|s)
+    \]
+    Now multiply both sides by $\pi_\theta(a|s)$:
+    \[
+    \pi_\theta(a|s)\nabla_\theta \log \pi_\theta(a|s) = \nabla_\theta \pi_\theta(a|s)
+    \]
+
+    \begin{equation}
+    \nabla_\theta \pi_\theta(a|s) = \pi_\theta(a|s) \nabla_\theta \log \pi_\theta(a|s)
+    \end{equation}
+    Plug this into our gradient:
+    \begin{equation}
+    \nabla_\theta J(\theta) = \sum_{s} d(s) \sum_{a} \pi_\theta(a|s) \nabla_\theta \log \pi_\theta(a|s) R_{s,a}
+    \end{equation}
+
+    \item \textbf{Writing as an Expectation} \\
+    This can now be written as an expectation over samples $(s,a) \sim d(s)\pi_\theta(a|s)$:
+    \begin{equation}
+    \nabla_\theta J(\theta) = \mathbb{E}_{\pi_\theta}\left[ \nabla_\theta \log \pi_\theta(a|s) \cdot r \right]
+    \end{equation}
+\end{enumerate}
+
+\subsubsection*{Interpretation}
+This is the policy gradient formula for a one-step MDP:
+\begin{itemize}
+    \item It tells us to increase the log-probability of actions that result in high reward.
+    \item This is REINFORCE, simplified to the contextual bandit case.
+\end{itemize}
+
+
 \section{Policy Gradients for Multi-Step MDPs }
 
 \subsection{Objective}
@@ -1065,7 +1121,7 @@ If we directly use $A_{t+1}$ from the Experience Replay Buffer, we are implicitl
         \item Receive initial state $S$.
         \item For $t=1, T$:
         \begin{enumerate}
-            \item Select action $A = \mu_\theta(S) + \mathcal{N}_t$.
+            \item Select action $A = \mu_\theta(S) + \mathcal{N}_t$ (Noise).
             \item Execute action $A$ and observe new state $S'$ and reward $R$.
             \item Store transition $(S, A, R, S')$ in $\mathcal{B}$.
             \item Sample a random minibatch of $N$ transitions from $\mathcal{B}$.
@@ -1176,6 +1232,7 @@ $$ \pi(a|s) = \arg\max_\pi \mathbb{E}[Q(s,a)] \text{ s.t. } D_{KL}(\pi || \pi_\b
 This approach can be difficult because the behavior policy $\pi_\beta$ is often unknown. Moreover, if the constraint is too strict, the policy may not be able to improve, and if it's too loose, the distribution shift problem persists.
 
 \subsection{Conservative Q-Learning (CQL)}
+\label{sec:CQL}
 Conservative Q-Learning (CQL) is a method that directly addresses the overestimation problem by modifying the Q-learning objective. Its goal is to \textbf{conservatively lower the Q-values for OOD actions} while keeping the Q-values for in-distribution actions high.
 The CQL loss function is:
 $$ L_{CQL}(Q) = \alpha \left( \mathbb{E}_{s \sim D, a \sim \mu(a|s)} [Q(s,a)] - \mathbb{E}_{(s,a) \sim D} [Q(s,a)] \right) + \mathbb{E}_{(s,a,s') \sim D} \left[ \left(Q(s,a) - \left(r(s,a) + \gamma \mathbb{E}_{a' \sim \pi(a'|s')}[Q(s',a')]\right)\right)^2 \right] $$
@@ -1227,10 +1284,47 @@ A2C is a stable on-policy method that reduces variance compared to REINFORCE by 
     $$ \theta \leftarrow \theta + \alpha_\theta \nabla_\theta J(\theta) $$
 \end{enumerate}
 
+\subsection{PPO - Broken Versions Discussions}
+
+
+\subsection*{1. PPO v0.5 --- Broken}
+\textbf{What it does:}
+\begin{itemize}
+    \item Runs like a standard Advantage Actor-Critic (A2C) update but just uses new parameters $\theta$ every iteration:
+    \[
+        \nabla J(\theta) \approx \frac{1}{N} \sum \nabla_\theta \log \pi_\theta(a_i|s_i) \, \hat{A}(s_i,a_i)
+    \]
+    \item Data is collected with $\pi_{\theta_{\text{old}}}$, but the log-probability ratio $\frac{\pi_\theta}{\pi_{\theta_{\text{old}}}}$ is not used --- it ignores that the policy changed between data collection and gradient computation.
+\end{itemize}
+
+\textbf{Why is this broken:}
+\begin{itemize}
+    \item Large gradient steps can move $\pi_\theta$ far from $\pi_{\theta_{\text{old}}}$ in one update.
+    \item On-policy assumption is violated because the collected batch no longer reflects the updated policy.
+    \item Can cause destructive policy updates (performance collapse after one bad step).
+\end{itemize}
+
+\subsection*{2. PPO v0.8 --- Still Broken (But Closer)}
+\textbf{What it adds:}
+\begin{itemize}
+    \item Introduces the ratio term:
+    \[
+        J_{\text{PPO}}(\theta) = \mathbb{E}_{\pi_{\theta_{\text{old}}}} \left[ \frac{\pi_\theta(a|s)}{\pi_{\theta_{\text{old}}}(a|s)} \, \hat{A}_{\pi_{\theta_\text{old}}}(s,a) \right]
+    \]
+    \item This is the importance-sampled surrogate objective from TRPO theory.
+\end{itemize}
+
+\textbf{Why still broken:}
+\begin{itemize}
+    \item The ratio is used, but there’s no constraint or clipping --- the ratio can still blow up.
+    \item High variance and instability remain because a single large update can overly increase/decrease action probabilities.
+\end{itemize}
+
+
 \subsection{Trust Region Policy Optimization (TRPO)}
 Policy gradient methods are susceptible to large updates that can destabilize training. If a policy update is too large, it can cause a catastrophic drop in performance. \\
 
-TRPO addresses this by introducing the concept of a "trust region." It aims to find the largest possible step that improves the policy, while ensuring that the new policy is not too far from the old policy. "Too far" is measured by the Kullback-Leibler (KL) divergence.
+TRPO addresses this by introducing the concept of a ``trust region." It aims to find the largest possible step that improves the policy, while ensuring that the new policy is not too far from the old policy. "Too far" is measured by the Kullback-Leibler (KL) divergence.
 
 $$ \max_\theta \mathbb{E}_{\pi_{\theta_{old}}} \left[ \frac{\pi_\theta(A_t|S_t)}{\pi_{\theta_{old}}(A_t|S_t)} A_{\pi_{\theta_{old}}}(S_t, A_t) \right] $$
 $$ \text{s.t. } \mathbb{E}_{\pi_{old}} [D_{KL}(\pi_{old} || \pi_\theta)] \leq \delta $$
@@ -1250,6 +1344,33 @@ $$ J^{PPO} (\theta) =  \max_\theta \mathbb{E}_{\pi_{\theta_{old}}} \left[ \min\l
 \begin{itemize}
     \item $\epsilon$ is a hyperparameter (e.g., 0.1 or 0.2) that defines the ``clipping range."
 \end{itemize}
+
+\begin{itemize}
+    \item If Advantage is positive:
+    \[
+        J^{PPO}(\theta) = \mathbb{E}_{\pi_{\theta_{\text{old}}}}
+        \left[
+            \min\left(
+                \frac{\pi_\theta(A_t|S_t)}{\pi_{\theta_{\text{old}}}(A_t|S_t)},
+                1 + \epsilon
+            \right)
+            A_{\pi_{\theta_{\text{old}}}}(S_t, A_t)
+        \right]
+    \]
+    
+    \item If Advantage is negative:
+    \[
+        J^{PPO}(\theta) = \mathbb{E}_{\pi_{\theta_{\text{old}}}}
+        \left[
+            \max\left(
+                \frac{\pi_\theta(A_t|S_t)}{\pi_{\theta_{\text{old}}}(A_t|S_t)},
+                1 - \epsilon
+            \right)
+            A_{\pi_{\theta_{\text{old}}}}(S_t, A_t)
+        \right]
+    \]
+\end{itemize}
+
 
 where $r_t(\theta) = \frac{\pi_\theta(A_t|S_t)}{\pi_{\theta_{old}}(A_t|S_t)}$ is the probability ratio and $\hat{A}_t$ is the advantage estimate. The `clip` function prevents the policy from making excessively large changes, thereby avoiding catastrophic updates.
 
@@ -1343,6 +1464,48 @@ As discussed in Section \ref{sec:ddpg} DDPG is an off-policy, actor-critic algor
     \end{enumerate}
 \end{enumerate}
 
+\subsection*{1. Broken Version --- Off-Policy Actor-Critic v0.5}
+\textbf{What it does:}
+\begin{itemize}
+    \item Uses a replay buffer but still tries to learn $V(s)$ directly from old (off-policy) samples.
+    \item Critic target:
+    \[
+        y_t = r_{t+1} + \gamma \, \hat{v}_{w^-}(s_{t+1})
+    \]
+    \item Actor uses advantages computed from $V$ estimates.
+\end{itemize}
+
+\textbf{Why it’s broken:}
+\begin{itemize}
+    \item Off-policy issue: You can’t directly learn $V(s)$ from replay buffer samples collected by older policies.
+    \item The state and action distributions no longer match the current policy, making Bellman targets biased.
+    \item This leads to incorrect value targets and unstable learning.
+\end{itemize}
+
+\subsection*{2. The Fix --- Learn $Q(s,a)$ Instead (Off-Policy Actor-Critic v0.8)}
+\textbf{Key change:}
+\begin{itemize}
+    \item Replace $V$-learning with a Q-learning style target:
+    \[
+        y_t = r_{t+1} + \gamma \, \hat{q}_{w^-}\big(s_{t+1}, a_{t+1} \sim \pi_\theta(\cdot|s_{t+1})\big)
+    \]
+    \item Here, $a_{t+1}$ is sampled from the \emph{current} policy, not the replay buffer.
+\end{itemize}
+
+\textbf{Why it works:}
+\begin{itemize}
+    \item $Q(s,a)$ Bellman targets remain valid off-policy — you only need the next action from the current policy.
+    \item Advantage can now be computed as:
+    \[
+        \hat{A}(s_i,a_i) = \hat{q}_w(s_i,a_i) - \hat{v}(s_i)
+    \]
+    \item With:
+    \[
+        \hat{v}(s_i) = \sum_a \pi_\theta(a|s_i) \, \hat{q}_w(s_i,a)
+    \]
+\end{itemize}
+
+
 \section{Soft Actor-Critic (SAC) }
 
 \textbf{Standard RL:} ``I'll keep doing what seems best right now.'' \\
@@ -1381,6 +1544,13 @@ $$ V^\pi(s_t) = \mathbb{E}_{a_t \sim \pi} [Q^\pi(s_t, a_t)] $$
     \item \textbf{Soft action-value}:
     $$ Q^\pi(s_t, a_t) = r(s_t, a_t) + \gamma \mathbb{E}_{s_{t+1}} [V^\pi(s_{t+1})] $$
 \end{itemize}
+
+\begin{itemize}
+    \item In optimization, a \textbf{soft maximum} (or \emph{soft value}) means we do not pick the single best action deterministically.
+    \item Instead, we average over all actions, weighting them by their probability under $\pi$, and encourage a broader distribution.
+    \item This avoids hard-max selection from Q-values (as in DQN), which can lead to premature convergence.
+\end{itemize}
+
 
 \subsection{SAC Algorithm}
 SAC uses a stochastic policy and two Q-networks to mitigate overestimation bias. It is particularly effective for continuous control tasks.
@@ -1436,46 +1606,87 @@ Learning a dynamics model is a supervised learning task. Given a dataset of tran
 \end{itemize}
 
 \subsection{Combining Model-Free RL with a Model - Background Planning}
-A common approach is to use a learned model to generate synthetic data, which is then used to train a separate model-free RL algorithm. This is a powerful way to boost sample efficiency. However, a major challenge is \textbf{distribution shift}: the model's accuracy is limited to the states it has seen, and long synthetic rollouts can accumulate prediction errors, leading to a ``bad" policy.
+A common approach is to use a learned model to generate synthetic data, which is then used to train a separate model-free RL algorithm. This is a powerful way to boost sample efficiency. However, major challenges is:
 
+\begin{itemize}
+    \item \textbf{Distribution shift}: the model's accuracy is limited to the states it has seen.
+    \item \textbf{Long synthetic rollouts} can accumulate prediction errors, leading to a ``bad'' policy.
+\end{itemize}
 
-\subsubsection{Model-free RL with a Model -- Short Rollouts}
+\subsubsection{Model-Based RL: Broken $\rightarrow$ Fixed Progression (MBPO)}
 
+\subsubsection*{1. Naïve Model-Based RL (v0.5) --- Broken}
+\textbf{Algorithm:}
 \begin{enumerate}
-    \item \textbf{Algorithm:}
+    \item Collect initial dataset $\mathcal{D}_{\text{env}}$ in the real environment using policy $\pi_\theta$.
+    \item \textbf{Loop:}
     \begin{enumerate}
-        \item Collect $D_{\text{env}}$ in real environment using $\pi_0$.
-        \item Learn $f_\eta(s,a)$ -- the model of the environment.
-        \item Generate smaller or synthetic rollouts and add them to $\rightarrow D_{\text{model}}$.
-        \item Update $\pi_\theta$ using the trajectories from $D_{\text{model}}$ using off-policy(SAC or DQN) RL. (For K times repeat with step c)
-        \item Deploy $\pi_\theta$ in real environment and repeat. (For N times repeat with step b)
+        \item \textbf{Model learning:} Fit dynamics model $\hat{P}(s'|s,a)$ on $\mathcal{D}_{\text{env}}$.
+        \item \textbf{Policy updates:}
+        \begin{enumerate}
+            \item Simulate full trajectories entirely in $\hat{P}$ starting from the initial state distribution.
+            \item Update $\pi_\theta$ to maximize returns in $\hat{P}$.
+        \end{enumerate}
+        \item \textbf{\textcolor{red}{No new real data collected here — major flaw.}}
     \end{enumerate}
-    
-    \item \textbf{Why off-policy?} 
-    \begin{itemize}
-        \item $D_{\text{env}} = \{(s,a,r,s')_i\}$ is collected using different policies $\pi_0, \pi_1, \dots$ over training iterations.
-        \item Off-policy algorithms (e.g., DQN, SAC) can learn from experience generated by any behavior policy, not necessarily the current $\pi_\theta$.
-        \item Similar to DQN's replay buffer: we learn the \emph{greedy} Q-function regardless of the policy that produced the samples.
-    \end{itemize}
+\end{enumerate}
 
-    \item \textbf{Model usage:}
-    \begin{itemize}
-        \item Learn $f_\eta(s,a)$ from $D_{\text{env}}$ to approximate dynamics.
-        \item Sample states $s_i$ from $D_{\text{env}}$, simulate \emph{short rollouts} with $f_\eta$.
-        \item Augment $D_{\text{model}}$ with these synthetic tuples $(s,a,r,s')$.
-    \end{itemize}
+\textbf{Why broken:}
+\begin{itemize}
+    \item Severe \textbf{distribution shift} and \textbf{compounding model errors} when rollouts go far from seen states.
+\end{itemize}
 
-    \item \textbf{State coverage advantage:}
-    \begin{itemize}
-        \item Model rollouts may reach states not yet visited in the real environment (from $s_0$).
-        \item Expands exploration coverage without costly real-environment interaction.
-    \end{itemize}
-
-
+\subsubsection*{2. Interleaving with Real Data (v0.8)}
+\textbf{Algorithm:}
+\begin{enumerate}
+    \item Initialize $\mathcal{D}_{\text{env}}$ with real transitions from an initial policy $\pi_\theta$.
+    \item \textbf{Loop:}
+    \begin{enumerate}
+        \item \textbf{Model learning:} Train dynamics model $\hat{P}$ on $\mathcal{D}_{\text{env}}$.
+        \item \textbf{Policy updates:}
+        \begin{enumerate}
+            \item Simulate trajectories entirely in $\hat{P}$ to create $\mathcal{D}_{\text{model}}$.
+            \item Update $\pi_\theta$ using $\mathcal{D}_{\text{model}}$.
+        \end{enumerate}
+        \item \textbf{Collect real data:} Deploy $\pi_\theta$ in the real environment for $N$ steps and add to $\mathcal{D}_{\text{env}}$. \colorbox{yellow}{\(\leftarrow\ \text{new change}\)}
+    \end{enumerate}
 \end{enumerate}
 
 
-\subsection{Dyna-Q Style Algorithm}
+\textbf{Improvement:}
+\begin{itemize}
+    \item Model continuously updated with states from current policy.
+\end{itemize}
+\textbf{Still broken:}
+\begin{itemize}
+    \item Long simulated rollouts still accumulate large prediction errors.
+\end{itemize}
+
+\subsubsection*{3. Short Model Rollouts from Real States (v1.0)}
+\textbf{Algorithm:}
+\begin{enumerate}
+    \item Initialize $\mathcal{D}_{\text{env}}$ with real transitions from an initial policy $\pi_\theta$.
+    \item \textbf{Loop:}
+    \begin{enumerate}
+        \item \textbf{Collect real data:} Deploy $\pi_\theta$ in the real environment for $N$ steps and add to $\mathcal{D}_{\text{env}}$.
+        \item \textbf{Model learning:} Train dynamics model $\hat{P}$ on $\mathcal{D}_{\text{env}}$.
+        \item \textbf{Policy updates:}
+        \begin{enumerate}
+            \item Sample real states from $\mathcal{D}_{\text{env}}$.
+            \item Perform \textbf{short rollouts} ($1$--$5$ steps) in $\hat{P}$ from those states to create $\mathcal{D}_{\text{model}}$. \colorbox{yellow}{\(\leftarrow\ \text{new change}\)}
+            \item Train $\pi_\theta$ on $\mathcal{D}_{\text{model}} \cup \mathcal{D}_{\text{env}}$. \colorbox{yellow}{\(\leftarrow\ \text{new change}\)}
+        \end{enumerate}
+    \end{enumerate}
+\end{enumerate}
+
+
+\textbf{Improvement:}
+\begin{itemize}
+    \item Reduces distribution shift since all rollouts start from real states.
+    \item Limits compounding errors with short horizons.
+\end{itemize}
+
+\subsubsection{Dyna-Q Style Algorithm - MBPO}
 This algorithm uses a model to supplement real-world experience, often in a continuous loop.
 
 \item \textbf{Algorithm:}
@@ -1483,13 +1694,24 @@ This algorithm uses a model to supplement real-world experience, often in a cont
     \item Run base policy $\pi_0(a|s)$ in the real environment to collect $D_{\text{env}} = \{(s,a,r,s')\}_i$.
     \item Learn environment model $f_\eta(s,a)$ using $D_{\text{env}}$.
     \item Pick states $S_i$ from $D_{\text{env}}$, use $f_\eta(s,a)$ to make short rollouts; add to $D_{\text{model}}$.
-    \item Use both $D_{\text{env}}$ and $D_{\text{model}}$ to update $\pi_\theta(a|s)$ via any off-policy RL algorithm (e.g., DQN, SAC).
+    \item Use both $D_{\text{env}}$ and $D_{\text{model}}$ to update $\pi_\theta(a|s)$ via any off-policy RL algorithm (e.g., DQN, SAC). \colorbox{yellow}{\(\leftarrow\ \text{picks states from both env and the model}\)}
     \item Deploy $\pi_\theta(a|s)$ in the real environment, appending $(s,a,r,s')$ to $D_{\text{env}}$ and repeat.
 \end{enumerate}
 
 This approach uses short rollouts from the model to avoid accumulating errors and combines real data to anchor learning, leading to more stable performance.
 
-\subsection{Direct Policy Learning with a Model }
+\item \textbf{Improvement:}
+\begin{itemize}
+    \item Combines sample efficiency of model rollouts with realism of real data.
+\end{itemize}
+
+\item \textbf{State coverage advantage:}
+\begin{itemize}
+    \item Model rollouts may reach states not yet visited in the real environment (from $s_0$).
+    \item Expands exploration coverage without costly real-environment interaction.
+\end{itemize}
+
+\subsubsection{Direct Policy Learning with a Model }
 This approach directly optimizes the policy by backpropagating gradients through the learned dynamics model. The key idea is to treat the environment model as part of the computational graph.
 \begin{enumerate}
     \item Run the policy $\pi_\theta$ in the real environment to collect a dataset $\mathcal{D}_{env}$.
@@ -1499,6 +1721,33 @@ This approach directly optimizes the policy by backpropagating gradients through
     \item Repeat the process by running the updated policy in the real environment to collect new data.
 \end{enumerate}
 This method can be very sample-efficient, but it can suffer from issues like vanishing or exploding gradients when unrolling over many time steps, and its effectiveness is highly dependent on the accuracy of the learned model.
+
+\item \textbf{Benefit:}
+\begin{itemize}
+    \item End-to-end differentiable optimization.
+\end{itemize}
+\textbf{Downside:}
+\begin{itemize}
+    \item Sensitive to model inaccuracies.
+    \item Gradient instability for large $H$ (Vanishing/Exploding gradients).
+\end{itemize}
+
+\subsubsection*{Summary Table}
+\begin{center}
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Version} & \textbf{Change} & \textbf{Main Benefit} & \textbf{Remaining Problem} \\
+\hline
+v0.5 & Train policy only in model & High sample efficiency & Severe shift, compounding error \\
+v0.8 & Periodic real data collection & Reduces shift & Still long rollout errors \\
+v1.0 & Short rollouts from real states & Limits error growth & Short horizon only \\
+MBPO & Mix real + model data & Stable + efficient & Needs tuning \\
+Direct BP & Backprop through model & Gradient-based planning & Numerical instability \\
+\hline
+\end{tabular}
+\end{center}
+
+
 
 
 \section{Model Based - Decision-Time Planning}
@@ -1907,7 +2156,7 @@ Continual RL focuses on agents that operate in vast, non-stationary worlds witho
 
 \section{Sample Question and Answer}
 
-\subsection{Question 1: REINFORCE with Baseline}
+\subsection*{Question 1: REINFORCE with Baseline}
 \textbf{The policy gradient update with a baseline is given by $\theta_{t+1} = \theta_t + \alpha \nabla_\theta \log \pi_\theta(A_t|S_t) (G_t - b(S_t))$, where $G_t$ is the Monte-Carlo return and $b(S_t)$ is a learned value function $\hat{v}(S_t, w)$.}
 \begin{enumerate}
     \item \textbf{Why is it mathematically valid to subtract a baseline $b(S_t)$ that only depends on the state? Explain why this does not introduce bias into the policy gradient estimate. (~2 sentences)}
@@ -1918,7 +2167,7 @@ Continual RL focuses on agents that operate in vast, non-stationary worlds witho
     \textbf{Answer:} The primary benefit of using a baseline is to reduce the variance of the policy gradient estimates, which leads to more stable and faster learning. The term $(G_t - b(S_t))$ is a Monte-Carlo estimate of the advantage function $A(S_t, A_t)$. This is because $G_t$ is an estimate of the Q-value $q_\pi(S_t, A_t)$ and the baseline $b(S_t)$ is an estimate of the state-value $v_\pi(S_t)$.
 \end{enumerate}
 
-\subsection{Question 2: Proximal Policy Optimization (PPO)}
+\subsection*{Question 2: Proximal Policy Optimization (PPO)}
 The PPO algorithm uses a clipped surrogate objective:
 $$ \max_\theta \mathbb{E}_{\pi_{\theta_{old}}} \left[ \min\left( r_t(\theta) \hat{A}_t, \text{clip}(r_t(\theta), 1 - \epsilon, 1 + \epsilon) \hat{A}_t \right) \right] $$
 where $r_t(\theta) = \frac{\pi_\theta(A_t|S_t)}{\pi_{\theta_{old}}(A_t|S_t)}$.
@@ -1931,7 +2180,7 @@ where $r_t(\theta) = \frac{\pi_\theta(A_t|S_t)}{\pi_{\theta_{old}}(A_t|S_t)}$.
     \textbf{Answer:} PPO's clipped objective provides a simpler, first-order optimization method to constrain the policy update. This avoids the complex and computationally expensive second-order optimization (like conjugate gradient) required by TRPO to solve its KL-divergence constraint.
 \end{enumerate}
 
-\subsection{Question 3: Soft Actor-Critic (SAC)}
+\subsection*{Question 3: Soft Actor-Critic (SAC)}
 The SAC objective function is augmented with an entropy term:
 $$ \pi^* = \arg\max_\pi \sum_t \mathbb{E}_{\rho^\pi} [r(s_t, a_t) + \alpha \mathcal{H}(\pi(\cdot|s_t))] $$
 \begin{enumerate}
@@ -1941,7 +2190,7 @@ $$ \pi^* = \arg\max_\pi \sum_t \mathbb{E}_{\rho^\pi} [r(s_t, a_t) + \alpha \math
     \textbf{Answer:} Maximizing entropy encourages better exploration by preventing premature convergence to a suboptimal policy and leads to more robust, stable policies. This is reflected in the soft Q-function update by adding the entropy of the next state's policy to the target value: $y_i = r_i + \gamma(\min_j Q_j(s', a') - \alpha \log\pi(a'|s'))$. This modification ensures that the value functions account for the future entropy rewards.
 \end{enumerate}
 
-\subsection{Question 4: Offline Reinforcement Learning (CQL)}
+\subsection*{Question 4: Offline Reinforcement Learning (CQL)}
 Offline RL learns from a fixed dataset, which presents a major challenge known as distribution shift.
 \begin{enumerate}
     \item \textbf{Briefly explain why out-of-distribution (OOD) actions are problematic for standard off-policy algorithms like Q-learning in the offline setting.}
@@ -1950,7 +2199,7 @@ Offline RL learns from a fixed dataset, which presents a major challenge known a
     \textbf{Answer:} The high-level goal of the CQL regularizer is to combat Q-value overestimation for OOD actions. It explicitly pushes down the Q-values for actions that are likely OOD (sampled from a distribution $\mu(a|s)$). Simultaneously, it pushes up the Q-values for actions that are actually present in the dataset.
 \end{enumerate}
 
-\subsection{Question 5: Dynamic Programming vs. Model-Free Control}
+\subsection*{Question 5: Dynamic Programming vs. Model-Free Control}
 Consider two fundamental algorithms: Value Iteration (a Dynamic Programming method) and Q-Learning (a Model-Free Control method). Both aim to find the optimal action-value function $q^*$.
 \begin{enumerate}
     \item \textbf{What is the single most important difference in the assumptions these two algorithms make about the environment? (~2 sentences)}
@@ -1959,7 +2208,7 @@ Consider two fundamental algorithms: Value Iteration (a Dynamic Programming meth
     \textbf{Answer:} In most real-world problems, the true dynamics of the environment are unknown and far too complex to be explicitly defined or stored. Q-Learning's ability to learn from direct interaction and experience makes it applicable to these complex scenarios where building an explicit model is infeasible.
 \end{enumerate}
 
-\subsection{Question 6: On-Policy vs. Off-Policy Learning}
+\subsection*{Question 6: On-Policy vs. Off-Policy Learning}
 Sarsa is a classic on-policy TD control algorithm, while Q-Learning is its off-policy counterpart.
 \begin{enumerate}
     \item \textbf{Explain the difference in their update rules and how it relates to their on-policy vs. off-policy nature. (~2 sentences)}
@@ -1976,7 +2225,7 @@ Sarsa is a classic on-policy TD control algorithm, while Q-Learning is its off-p
     \textbf{Answer:} The main advantage of off-policy learning is data efficiency, as it can learn the optimal policy from data generated by any behavior policy, including old data stored in a replay buffer. On-policy methods, in contrast, must discard data after each policy update. However, an on-policy method might be preferred for its stability, as it directly learns about the consequences (the feedback you get from the environment is of the current policy and not using a different policy like off-policy) of the policy it's actually executing, which can lead to smoother convergence, especially in the presence of function approximation.
 \end{enumerate}
 
-\subsection{Question 7: Model-Based Reinforcement Learning}
+\subsection*{Question 7: Model-Based Reinforcement Learning}
 Model-based RL approaches learn a model of the environment to aid in policy learning.
 \begin{enumerate}
     \item \textbf{What is the primary advantage and a key disadvantage of model-based RL? (~2 sentences)}
@@ -1985,7 +2234,7 @@ Model-based RL approaches learn a model of the environment to aid in policy lear
     \textbf{Answer:} Dyna-Q mitigates the problem of model error by continuously updating the model with real experience collected from the environment. It combines planning with model-generated data and learning from real data, which helps to correct for inaccuracies in the model and ground the policy in reality.
 \end{enumerate}
 
-\subsection{Question 8: Deep Deterministic Policy Gradient (DDPG)}
+\subsection*{Question 8: Deep Deterministic Policy Gradient (DDPG)}
 DDPG is an off-policy algorithm designed for continuous control.
 \begin{enumerate}
     \item \textbf{Why is DDPG considered an ``Actor-Critic" algorithm? Briefly describe the roles of the actor and the critic. (~2 sentences)}
@@ -1994,75 +2243,197 @@ DDPG is an off-policy algorithm designed for continuous control.
     \textbf{Answer:} DDPG ensures exploration by adding noise (typically from a stochastic process like Ornstein-Uhlenbeck or simple Gaussian noise) to the actions selected by the deterministic actor during the training phase.
 \end{enumerate}
 
-\subsection{Question 9: DDQN vs. SAC: A Mathematical Comparison}
+\subsection*{Question 9: DDPG vs. SAC: A Mathematical Comparison}
 
-\subsubsection*{1. Double DQN (DDQN) Equation}
-DDQN improves over vanilla DQN by separating action selection and evaluation to reduce overestimation bias.
+\subsubsection*{1. Deep Deterministic Policy Gradient (DDPG) Equations}
+DDPG is an off-policy actor-critic algorithm that uses a deterministic policy and a single critic. \\
 
 \textbf{Target value:}
-$$ y^{\text{DDQN}} = r + \gamma \ Q_{\theta^-} \big( s', \ \arg\max_a Q_{\theta}(s',a) \big) $$
+\[
+    y^{\text{DDPG}} = r + \gamma \ Q_{\theta^-} \big( s', \ \mu_{\phi^-}(s') \big)
+\]
 Where:
 \begin{itemize}
-    \item $Q_{\theta} \to$ online network (used for selection of the best action)
-    \item $Q_{\theta^-} \to$ target network (used for evaluation of that chosen action)
-    \item $r \to$ reward received
-    \item $\gamma \to$ discount factor
+    \item $Q_{\theta} \to$ critic (estimates $Q(s,a)$).
+    \item $Q_{\theta^-} \to$ target critic network.
+    \item $\mu_{\phi} \to$ deterministic actor network.
+    \item $\mu_{\phi^-} \to$ target actor network.
+    \item $r \to$ reward received.
+    \item $\gamma \to$ discount factor.
 \end{itemize}
 
-\textbf{Loss function:}
-$$ L(\theta) = \mathbb{E}_{(s,a,r,s') \sim \mathcal{D}} \left[ \big( Q_{\theta}(s,a) - y^{\text{DDQN}} \big)^2 \right] $$
-\textbf{Key features in the equation:}
+\textbf{Critic loss:}
+\[
+    L(\theta) = \mathbb{E}_{(s,a,r,s') \sim \mathcal{D}} \left[ \big( Q_{\theta}(s,a) - y^{\text{DDPG}} \big)^2 \right]
+\]
+
+\textbf{Actor loss:}
+\[
+    J_{\mu}(\phi) = - \mathbb{E}_{s \sim \mathcal{D}} \left[ Q_{\theta}\big(s, \mu_{\phi}(s)\big) \right]
+\]
+The actor maximizes the critic's Q-value for its chosen actions.
+
+\textbf{Key features:}
 \begin{itemize}
-    \item The $\arg\max_a Q_\theta(s',a)$ assumes a deterministic best action.
-    \item No entropy term -- the algorithm focuses only on expected reward.
+    \item Deterministic policy (no entropy term).
+    \item Single critic network (plus its target copy).
+    \item Policy updates come from deterministic policy gradient.
 \end{itemize}
 
-\subsubsection*{2. Soft Actor-Critic (SAC) Equation}
-SAC comes from the maximum entropy RL framework and adds an entropy bonus directly into the Bellman backup.
+\subsubsection*{2. Soft Actor-Critic (SAC) Equations}
+SAC extends the actor-critic framework with maximum entropy RL and twin critics. \\
 
 \textbf{Target value (Clipped Double Q-learning):}
-$$ y^{\text{SAC}} = r + \gamma \ \mathbb{E}_{a' \sim \pi_\phi} \Big[ \min_{i \in \{1,2\}} Q_{\theta_i}(s',a') - \alpha \log \pi_\phi(a'|s') \Big] $$
+\[
+    y^{\text{SAC}} = r + \gamma \ \mathbb{E}_{a' \sim \pi_\phi} \Big[ \min_{i \in \{1,2\}} Q_{\theta_i}(s',a') - \alpha \log \pi_\phi(a'|s') \Big]
+\]
 Where:
 \begin{itemize}
-    \item Two critics $Q_{\theta_1}, Q_{\theta_2} \to$ take the minimum to reduce overestimation.
+    \item Two critics $Q_{\theta_1}, Q_{\theta_2}$ --- take the minimum to reduce overestimation.
     \item $\pi_\phi(a|s) \to$ stochastic policy (actor network).
     \item $\alpha \to$ temperature parameter controlling entropy weight.
     \item $-\alpha \log \pi_\phi(a'|s') \to$ entropy bonus (encourages exploration).
 \end{itemize}
 
 \textbf{Critic loss:}
-$$ L(\theta_i) = \mathbb{E}_{(s,a,r,s') \sim \mathcal{D}} \left[ \big( Q_{\theta_i}(s,a) - y^{\text{SAC}} \big)^2 \right], \quad i = 1, 2 $$
+\[
+    L(\theta_i) = \mathbb{E}_{(s,a,r,s') \sim \mathcal{D}} \left[ \big( Q_{\theta_i}(s,a) - y^{\text{SAC}} \big)^2 \right], \quad i = 1, 2
+\]
 
 \textbf{Actor loss:}
-$$ J_\pi(\phi) = \mathbb{E}_{s \sim \mathcal{D}} \left[ \alpha \log \pi_\phi(a|s) - Q_{\theta_1}(s,a) \right] $$
-This directly optimizes the policy toward actions that have:
+\[
+    J_\pi(\phi) = \mathbb{E}_{s \sim \mathcal{D}} \left[ \alpha \log \pi_\phi(a|s) - Q_{\theta_1}(s,a) \right]
+\]
+The actor trades off between high Q-value and high entropy.
+
+\textbf{Key features:}
 \begin{itemize}
-    \item High Q-values (exploitation)
-    \item High entropy (exploration)
+    \item Stochastic policy.
+    \item Two critics with minimum selection.
+    \item Explicit entropy regularization in both target and policy objective.
 \end{itemize}
 
 \subsubsection*{3. Side-by-Side Equation Comparison}
 \begin{tabular}{|l|l|l|}
 \hline
-\textbf{Concept} & \textbf{DDQN} & \textbf{SAC} \\
+\textbf{Concept} & \textbf{DDPG} & \textbf{SAC} \\
 \hline
-\textbf{Action choice in target} & $\arg\max_a Q_\theta(s',a)$ (deterministic) & $a' \sim \pi_\phi(a|s')$ (stochastic) \\
+\textbf{Policy type} & Deterministic $\mu_\phi(s)$ & Stochastic $\pi_\phi(a|s)$ \\
 \hline
-\textbf{Action evaluation in target} & $Q_{\theta^-}(s', a_{\text{best}})$ & $\min(Q_{\theta_1}, Q_{\theta_2})(s',a')$ \\
+\textbf{Action in target} & $\mu_{\phi^-}(s')$ & $a' \sim \pi_\phi(a|s')$ \\
+\hline
+\textbf{Critics} & One critic (and target) & Two critics (min for stability) \\
 \hline
 \textbf{Entropy term} & None & $-\alpha \log \pi_\phi(a'|s')$ \\
 \hline
-\textbf{Critics} & One Q-function (online + target) & Two Q-functions \\
-\hline
-\textbf{Policy update} & Implicit (greedy from Q) & Explicit gradient update of $\pi_\phi$ \\
+\textbf{Policy update} & Maximize Q-value deterministically & Maximize Q-value + entropy \\
 \hline
 \end{tabular}
 
-\subsubsection*{4. Key Takeaways from the Equations}
+\subsubsection*{4. Key Takeaways}
 \begin{itemize}
-    \item In DDQN, the update target is purely: Reward + discounted best Q-value for the next state. "Best" means the deterministic argmax from the online Q-network, evaluated by the target Q-network.
-    \item In SAC, the update target is: Reward + discounted pessimistic estimate ($\min$ of critics) -- entropy term. The ``best'' action is stochastic, drawn from the learned policy.
-    \item The entropy term in SAC's equations keeps the policy probabilistic and exploratory, which DDQN does not do.
+    \item DDPG optimizes a deterministic policy to maximize Q-values, without explicit exploration bonuses.
+    \item SAC optimizes a stochastic policy, balancing exploitation (high Q) and exploration (high entropy).
+    \item SAC's twin-critic and entropy framework make it generally more stable and robust, especially in environments where exploration is important.
 \end{itemize}
+
+\subsubsection*{Question 10: Policy Gradient Derivation: Fill-in-the-Blank Question}
+
+In a one-step MDP (contextual bandit), the agent observes a state $s \sim d(s)$, takes an action $a \sim \pi_\theta(a\mid s)$, receives a reward $r=R_{s,a}$, and the episode ends.
+
+Let the objective be the expected reward:
+\[ J(\theta) = \mathbb{E}_{\pi_\theta}[r] \]
+Use the score function trick to derive the gradient of $J(\theta)$ with respect to $\theta$.
+
+
+\item \textbf{✏️ Question: Complete the missing steps}
+Fill in the missing Line 2 and Line 3 below.
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Step} & \textbf{Equation} \\
+\hline
+Line 1 & $J(\theta) = \sum_s d(s) \sum_a \pi_\theta(a|s) R_{s,a}$ \\
+\hline
+Line 2 & \textbf{\textit{You fill this in}} \\
+\hline
+Line 3 & \textbf{\textit{You fill this in}} \\
+\hline
+Line 4 & $ = \mathbb{E}_{\pi_\theta} \left[ \nabla_\theta \log \pi_\theta(a|s) \cdot r \right]$ \\
+\hline
+\end{tabular}
+\end{center}
+
+\item \textbf{Answer:} 
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Step} & \textbf{Equation} \\
+\hline
+Line 1 & $J(\theta) = \sum_s d(s) \sum_a \pi_\theta(a|s) R_{s,a}$ \\
+\hline
+Line 2 & $\nabla_\theta J(\theta) = \sum_s d(s) \sum_a \nabla_\theta \pi_\theta(a|s) R_{s,a}$ \\
+\hline
+Line 3 & $ = \sum_s d(s) \sum_a \pi_\theta(a|s) \nabla_\theta \log \pi_\theta(a|s) R_{s,a}$ \\
+\hline
+Line 4 & $ = \mathbb{E}_{\pi_\theta} \left[ \nabla_\theta \log \pi_\theta(a|s) \cdot r \right]$ \\
+\hline
+\end{tabular}
+
+\textbf{\item Refer to section \ref{sec:policy_gradient_derivation} for a detailed answer.}
+
+\subsubsection*{Question 11: What is Conservative Q-Learning (CQL) and what problem does it aim to solve in Reinforcement Learning?}
+\textbf{Refer to section \ref{sec:CQL} for detailed explanation.} \\
+
+\textbf{Answer: }
+\begin{itemize}
+\item Conservative Q-Learning (CQL) is an \textit{offline reinforcement learning} algorithm designed to learn effective policies from fixed datasets without additional environment interaction.
+
+\item The key problem CQL addresses is \textbf{overestimation of Q-values} for out-of-distribution (OOD) actions — i.e., actions not well-represented in the offline dataset. Traditional Q-learning methods can assign high values to these unseen actions, leading to poor policy performance when deployed.
+
+\item CQL solves this by \textbf{penalizing the Q-function for assigning high values to unseen or less-likely actions}. It enforces a form of conservatism by encouraging the learned Q-values to remain low for actions outside the data distribution, thus avoiding optimistic extrapolation.
+
+\end{itemize}
+
+Mathematically, CQL modifies the Q-learning objective by adding a term like:
+\[
+\text{CQL Objective:} \quad \min_Q \underbrace{\text{Bellman Error}}_{\text{TD Loss}} + \alpha \left( \mathbb{E}_{a \sim \pi(\cdot|s)}[Q(s, a)] - \mathbb{E}_{a \sim \mathcal{D}}[Q(s, a)] \right)
+\]
+where:
+\begin{itemize}
+    \item $\mathcal{D}$ is the dataset distribution,
+    \item $\pi$ is the learned policy,
+    \item $\alpha$ is a regularization coefficient.
+\end{itemize}
+
+This discourages the policy from assigning high value to actions that are not supported by the dataset. \\
+
+\subsubsection*{Question 12: DQN suffers from the problem of overestimation of Q values. The loss function used in DQN is 
+\[
+L(w) = \sum_i \left( R_{i+1} + \gamma \max_{a'} \hat{q}_{w^-}(S_{i+1}, a') - \hat{q}_w(S_i, A_i) \right)^2
+\]
+where \( w^- \) is the parameters of the target network. Double DQN – an improvement to DQN – mitigates the issue of overestimation in DQN. Double DQN uses the following loss function:
+\[
+L(w) = \sum_i \left( R_{i+1} + \gamma \hat{q}_{w^-} \left(S_{i+1}, \arg\max_{a'} \hat{q}_w(S_{i+1}, a') \right) - \hat{q}_w(S_i, A_i) \right)^2
+\]}
+
+\begin{enumerate}[label=\alph*.]
+    \item \textbf{[2 points]} Explain using the loss function used for training DQN, what causes the overestimation problem in DQN (~2 sentences)
+
+    \textbf{Answer:} 
+   \begin{itemize}
+    \item $\hat{q}_{w^-}(S_{i+1}, a')$ is a noisy estimate. \\
+    \item $\max_{a'} \hat{q}_{w^-}(S_{i+1}, a')$ systematically always picks up the max positive noise resulting in overestimation.
+    \end{itemize}
+
+    \item \textbf{[3 points]} Explain how the loss function used in Double DQN addresses the overestimation problem in DQN (~3 sentences)
+
+   \textbf{Answer:} 
+   \begin{itemize}
+       \item Double DQN aims to decorrelate the network that selects the max action, and the network that gives the action value corresponding to the selected max action.
+       \item The two networks can have different noisy estimates for action values in a state. 
+       \item This reduces the chance of overestimation as for overestimation to happen both networks would need to have high positive direction noise for the same action in a given state.
+   \end{itemize}
+    
+\end{enumerate}
 
 \end{document}
