@@ -11,7 +11,7 @@
 
 
 \title{Reinforcement Learning Notes}
-\author{Generated from Lecture Notes for CSCI 6904 (Deep Reinforcement Learning)}
+\author{Lecture Notes for CSCI 6904 (Deep Reinforcement Learning)}
 \date{\today}
 
 
@@ -241,6 +241,7 @@ This approach differs from Supervised Learning (SL) Maximum Likelihood in that t
 \end{enumerate}
 
 \subsection{Step-by-Step Derivation of the Policy Gradient \colorbox{yellow}{(Very important)}}
+\label{sec:policy_gradient_derivation}
 \begin{enumerate}
     \item \textbf{Objective Function: Expected Reward} \\
     We want to maximize the expected reward under the current policy:
@@ -1231,6 +1232,7 @@ $$ \pi(a|s) = \arg\max_\pi \mathbb{E}[Q(s,a)] \text{ s.t. } D_{KL}(\pi || \pi_\b
 This approach can be difficult because the behavior policy $\pi_\beta$ is often unknown. Moreover, if the constraint is too strict, the policy may not be able to improve, and if it's too loose, the distribution shift problem persists.
 
 \subsection{Conservative Q-Learning (CQL)}
+\label{sec:CQL}
 Conservative Q-Learning (CQL) is a method that directly addresses the overestimation problem by modifying the Q-learning objective. Its goal is to \textbf{conservatively lower the Q-values for OOD actions} while keeping the Q-values for in-distribution actions high.
 The CQL loss function is:
 $$ L_{CQL}(Q) = \alpha \left( \mathbb{E}_{s \sim D, a \sim \mu(a|s)} [Q(s,a)] - \mathbb{E}_{(s,a) \sim D} [Q(s,a)] \right) + \mathbb{E}_{(s,a,s') \sim D} \left[ \left(Q(s,a) - \left(r(s,a) + \gamma \mathbb{E}_{a' \sim \pi(a'|s')}[Q(s',a')]\right)\right)^2 \right] $$
@@ -2154,7 +2156,7 @@ Continual RL focuses on agents that operate in vast, non-stationary worlds witho
 
 \section{Sample Question and Answer}
 
-\subsection{Question 1: REINFORCE with Baseline}
+\subsection*{Question 1: REINFORCE with Baseline}
 \textbf{The policy gradient update with a baseline is given by $\theta_{t+1} = \theta_t + \alpha \nabla_\theta \log \pi_\theta(A_t|S_t) (G_t - b(S_t))$, where $G_t$ is the Monte-Carlo return and $b(S_t)$ is a learned value function $\hat{v}(S_t, w)$.}
 \begin{enumerate}
     \item \textbf{Why is it mathematically valid to subtract a baseline $b(S_t)$ that only depends on the state? Explain why this does not introduce bias into the policy gradient estimate. (~2 sentences)}
@@ -2165,7 +2167,7 @@ Continual RL focuses on agents that operate in vast, non-stationary worlds witho
     \textbf{Answer:} The primary benefit of using a baseline is to reduce the variance of the policy gradient estimates, which leads to more stable and faster learning. The term $(G_t - b(S_t))$ is a Monte-Carlo estimate of the advantage function $A(S_t, A_t)$. This is because $G_t$ is an estimate of the Q-value $q_\pi(S_t, A_t)$ and the baseline $b(S_t)$ is an estimate of the state-value $v_\pi(S_t)$.
 \end{enumerate}
 
-\subsection{Question 2: Proximal Policy Optimization (PPO)}
+\subsection*{Question 2: Proximal Policy Optimization (PPO)}
 The PPO algorithm uses a clipped surrogate objective:
 $$ \max_\theta \mathbb{E}_{\pi_{\theta_{old}}} \left[ \min\left( r_t(\theta) \hat{A}_t, \text{clip}(r_t(\theta), 1 - \epsilon, 1 + \epsilon) \hat{A}_t \right) \right] $$
 where $r_t(\theta) = \frac{\pi_\theta(A_t|S_t)}{\pi_{\theta_{old}}(A_t|S_t)}$.
@@ -2178,7 +2180,7 @@ where $r_t(\theta) = \frac{\pi_\theta(A_t|S_t)}{\pi_{\theta_{old}}(A_t|S_t)}$.
     \textbf{Answer:} PPO's clipped objective provides a simpler, first-order optimization method to constrain the policy update. This avoids the complex and computationally expensive second-order optimization (like conjugate gradient) required by TRPO to solve its KL-divergence constraint.
 \end{enumerate}
 
-\subsection{Question 3: Soft Actor-Critic (SAC)}
+\subsection*{Question 3: Soft Actor-Critic (SAC)}
 The SAC objective function is augmented with an entropy term:
 $$ \pi^* = \arg\max_\pi \sum_t \mathbb{E}_{\rho^\pi} [r(s_t, a_t) + \alpha \mathcal{H}(\pi(\cdot|s_t))] $$
 \begin{enumerate}
@@ -2188,7 +2190,7 @@ $$ \pi^* = \arg\max_\pi \sum_t \mathbb{E}_{\rho^\pi} [r(s_t, a_t) + \alpha \math
     \textbf{Answer:} Maximizing entropy encourages better exploration by preventing premature convergence to a suboptimal policy and leads to more robust, stable policies. This is reflected in the soft Q-function update by adding the entropy of the next state's policy to the target value: $y_i = r_i + \gamma(\min_j Q_j(s', a') - \alpha \log\pi(a'|s'))$. This modification ensures that the value functions account for the future entropy rewards.
 \end{enumerate}
 
-\subsection{Question 4: Offline Reinforcement Learning (CQL)}
+\subsection*{Question 4: Offline Reinforcement Learning (CQL)}
 Offline RL learns from a fixed dataset, which presents a major challenge known as distribution shift.
 \begin{enumerate}
     \item \textbf{Briefly explain why out-of-distribution (OOD) actions are problematic for standard off-policy algorithms like Q-learning in the offline setting.}
@@ -2197,7 +2199,7 @@ Offline RL learns from a fixed dataset, which presents a major challenge known a
     \textbf{Answer:} The high-level goal of the CQL regularizer is to combat Q-value overestimation for OOD actions. It explicitly pushes down the Q-values for actions that are likely OOD (sampled from a distribution $\mu(a|s)$). Simultaneously, it pushes up the Q-values for actions that are actually present in the dataset.
 \end{enumerate}
 
-\subsection{Question 5: Dynamic Programming vs. Model-Free Control}
+\subsection*{Question 5: Dynamic Programming vs. Model-Free Control}
 Consider two fundamental algorithms: Value Iteration (a Dynamic Programming method) and Q-Learning (a Model-Free Control method). Both aim to find the optimal action-value function $q^*$.
 \begin{enumerate}
     \item \textbf{What is the single most important difference in the assumptions these two algorithms make about the environment? (~2 sentences)}
@@ -2206,7 +2208,7 @@ Consider two fundamental algorithms: Value Iteration (a Dynamic Programming meth
     \textbf{Answer:} In most real-world problems, the true dynamics of the environment are unknown and far too complex to be explicitly defined or stored. Q-Learning's ability to learn from direct interaction and experience makes it applicable to these complex scenarios where building an explicit model is infeasible.
 \end{enumerate}
 
-\subsection{Question 6: On-Policy vs. Off-Policy Learning}
+\subsection*{Question 6: On-Policy vs. Off-Policy Learning}
 Sarsa is a classic on-policy TD control algorithm, while Q-Learning is its off-policy counterpart.
 \begin{enumerate}
     \item \textbf{Explain the difference in their update rules and how it relates to their on-policy vs. off-policy nature. (~2 sentences)}
@@ -2223,7 +2225,7 @@ Sarsa is a classic on-policy TD control algorithm, while Q-Learning is its off-p
     \textbf{Answer:} The main advantage of off-policy learning is data efficiency, as it can learn the optimal policy from data generated by any behavior policy, including old data stored in a replay buffer. On-policy methods, in contrast, must discard data after each policy update. However, an on-policy method might be preferred for its stability, as it directly learns about the consequences (the feedback you get from the environment is of the current policy and not using a different policy like off-policy) of the policy it's actually executing, which can lead to smoother convergence, especially in the presence of function approximation.
 \end{enumerate}
 
-\subsection{Question 7: Model-Based Reinforcement Learning}
+\subsection*{Question 7: Model-Based Reinforcement Learning}
 Model-based RL approaches learn a model of the environment to aid in policy learning.
 \begin{enumerate}
     \item \textbf{What is the primary advantage and a key disadvantage of model-based RL? (~2 sentences)}
@@ -2232,7 +2234,7 @@ Model-based RL approaches learn a model of the environment to aid in policy lear
     \textbf{Answer:} Dyna-Q mitigates the problem of model error by continuously updating the model with real experience collected from the environment. It combines planning with model-generated data and learning from real data, which helps to correct for inaccuracies in the model and ground the policy in reality.
 \end{enumerate}
 
-\subsection{Question 8: Deep Deterministic Policy Gradient (DDPG)}
+\subsection*{Question 8: Deep Deterministic Policy Gradient (DDPG)}
 DDPG is an off-policy algorithm designed for continuous control.
 \begin{enumerate}
     \item \textbf{Why is DDPG considered an ``Actor-Critic" algorithm? Briefly describe the roles of the actor and the critic. (~2 sentences)}
@@ -2241,7 +2243,7 @@ DDPG is an off-policy algorithm designed for continuous control.
     \textbf{Answer:} DDPG ensures exploration by adding noise (typically from a stochastic process like Ornstein-Uhlenbeck or simple Gaussian noise) to the actions selected by the deterministic actor during the training phase.
 \end{enumerate}
 
-\subsection{DDPG vs. SAC: A Mathematical Comparison}
+\subsection*{Question 9: DDPG vs. SAC: A Mathematical Comparison}
 
 \subsubsection*{1. Deep Deterministic Policy Gradient (DDPG) Equations}
 DDPG is an off-policy actor-critic algorithm that uses a deterministic policy and a single critic. \\
@@ -2335,5 +2337,103 @@ The actor trades off between high Q-value and high entropy.
     \item SAC's twin-critic and entropy framework make it generally more stable and robust, especially in environments where exploration is important.
 \end{itemize}
 
+\subsubsection*{Question 10: Policy Gradient Derivation: Fill-in-the-Blank Question}
+
+In a one-step MDP (contextual bandit), the agent observes a state $s \sim d(s)$, takes an action $a \sim \pi_\theta(a\mid s)$, receives a reward $r=R_{s,a}$, and the episode ends.
+
+Let the objective be the expected reward:
+\[ J(\theta) = \mathbb{E}_{\pi_\theta}[r] \]
+Use the score function trick to derive the gradient of $J(\theta)$ with respect to $\theta$.
+
+
+\item \textbf{✏️ Question: Complete the missing steps}
+Fill in the missing Line 2 and Line 3 below.
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Step} & \textbf{Equation} \\
+\hline
+Line 1 & $J(\theta) = \sum_s d(s) \sum_a \pi_\theta(a|s) R_{s,a}$ \\
+\hline
+Line 2 & \textbf{\textit{You fill this in}} \\
+\hline
+Line 3 & \textbf{\textit{You fill this in}} \\
+\hline
+Line 4 & $ = \mathbb{E}_{\pi_\theta} \left[ \nabla_\theta \log \pi_\theta(a|s) \cdot r \right]$ \\
+\hline
+\end{tabular}
+\end{center}
+
+\item \textbf{Answer:} 
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Step} & \textbf{Equation} \\
+\hline
+Line 1 & $J(\theta) = \sum_s d(s) \sum_a \pi_\theta(a|s) R_{s,a}$ \\
+\hline
+Line 2 & $\nabla_\theta J(\theta) = \sum_s d(s) \sum_a \nabla_\theta \pi_\theta(a|s) R_{s,a}$ \\
+\hline
+Line 3 & $ = \sum_s d(s) \sum_a \pi_\theta(a|s) \nabla_\theta \log \pi_\theta(a|s) R_{s,a}$ \\
+\hline
+Line 4 & $ = \mathbb{E}_{\pi_\theta} \left[ \nabla_\theta \log \pi_\theta(a|s) \cdot r \right]$ \\
+\hline
+\end{tabular}
+
+\textbf{\item Refer to section \ref{sec:policy_gradient_derivation} for a detailed answer.}
+
+\subsubsection*{Question 11: What is Conservative Q-Learning (CQL) and what problem does it aim to solve in Reinforcement Learning?}
+\textbf{Refer to section \ref{sec:CQL} for detailed explanation.} \\
+
+\textbf{Answer: }
+\begin{itemize}
+\item Conservative Q-Learning (CQL) is an \textit{offline reinforcement learning} algorithm designed to learn effective policies from fixed datasets without additional environment interaction.
+
+\item The key problem CQL addresses is \textbf{overestimation of Q-values} for out-of-distribution (OOD) actions — i.e., actions not well-represented in the offline dataset. Traditional Q-learning methods can assign high values to these unseen actions, leading to poor policy performance when deployed.
+
+\item CQL solves this by \textbf{penalizing the Q-function for assigning high values to unseen or less-likely actions}. It enforces a form of conservatism by encouraging the learned Q-values to remain low for actions outside the data distribution, thus avoiding optimistic extrapolation.
+
+\end{itemize}
+
+Mathematically, CQL modifies the Q-learning objective by adding a term like:
+\[
+\text{CQL Objective:} \quad \min_Q \underbrace{\text{Bellman Error}}_{\text{TD Loss}} + \alpha \left( \mathbb{E}_{a \sim \pi(\cdot|s)}[Q(s, a)] - \mathbb{E}_{a \sim \mathcal{D}}[Q(s, a)] \right)
+\]
+where:
+\begin{itemize}
+    \item $\mathcal{D}$ is the dataset distribution,
+    \item $\pi$ is the learned policy,
+    \item $\alpha$ is a regularization coefficient.
+\end{itemize}
+
+This discourages the policy from assigning high value to actions that are not supported by the dataset. \\
+
+\subsubsection*{Question 12: DQN suffers from the problem of overestimation of Q values. The loss function used in DQN is 
+\[
+L(w) = \sum_i \left( R_{i+1} + \gamma \max_{a'} \hat{q}_{w^-}(S_{i+1}, a') - \hat{q}_w(S_i, A_i) \right)^2
+\]
+where \( w^- \) is the parameters of the target network. Double DQN – an improvement to DQN – mitigates the issue of overestimation in DQN. Double DQN uses the following loss function:
+\[
+L(w) = \sum_i \left( R_{i+1} + \gamma \hat{q}_{w^-} \left(S_{i+1}, \arg\max_{a'} \hat{q}_w(S_{i+1}, a') \right) - \hat{q}_w(S_i, A_i) \right)^2
+\]}
+
+\begin{enumerate}[label=\alph*.]
+    \item \textbf{[2 points]} Explain using the loss function used for training DQN, what causes the overestimation problem in DQN (~2 sentences)
+
+    \textbf{Answer:} 
+   \begin{itemize}
+    \item $\hat{q}_{w^-}(S_{i+1}, a')$ is a noisy estimate. \\
+    \item $\max_{a'} \hat{q}_{w^-}(S_{i+1}, a')$ systematically always picks up the max positive noise resulting in overestimation.
+    \end{itemize}
+
+    \item \textbf{[3 points]} Explain how the loss function used in Double DQN addresses the overestimation problem in DQN (~3 sentences)
+
+   \textbf{Answer:} 
+   \begin{itemize}
+       \item Double DQN aims to decorrelate the network that selects the max action, and the network that gives the action value corresponding to the selected max action.
+       \item The two networks can have different noisy estimates for action values in a state. 
+       \item This reduces the chance of overestimation as for overestimation to happen both networks would need to have high positive direction noise for the same action in a given state.
+   \end{itemize}
+    
+\end{enumerate}
 
 \end{document}
