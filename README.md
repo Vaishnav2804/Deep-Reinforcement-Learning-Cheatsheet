@@ -15,7 +15,7 @@ This resource is designed for students, researchers, and practitioners who want 
 
 ## About the Document
 
-The `Deep_RL_notes.pdf` is a 53-page document that synthesizes a semester's worth of deep reinforcement learning knowledge into a single, well-organized file. It progresses logically from the basic formalisms of RL to the cutting-edge algorithms and research areas that define the field today.
+The `Deep_RL_notes.pdf` is a 59-page document that synthesizes a semester's worth of deep reinforcement learning knowledge into a single, well-organized file. It progresses logically from the basic formalisms of RL to the cutting-edge algorithms and research areas that define the field today.
 
 ## Key Features
 
