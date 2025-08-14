@@ -239,6 +239,61 @@ This approach differs from Supervised Learning (SL) Maximum Likelihood in that t
     \item Compute the gradient estimate: $\nabla_\theta J(\theta) = \frac{1}{N} \sum_i \nabla_\theta \log \pi_\theta(A_i|S_i) R_{S_i,A_i}$.
     \item Update the policy parameters: $\theta \leftarrow \theta + \alpha \nabla_\theta J(\theta)$.
 \end{enumerate}
+
+\subsection{Step-by-Step Derivation of the Policy Gradient \colorbox{yellow}{(Very important)}}
+\begin{enumerate}
+    \item \textbf{Objective Function: Expected Reward} \\
+    We want to maximize the expected reward under the current policy:
+    \begin{equation}
+    J(\theta) = \mathbb{E}_{\pi_\theta}[r] = \sum_{s} d(s) \sum_{a} \pi_\theta(a|s) R_{s,a}
+    \end{equation}
+    Here:
+    \begin{itemize}
+        \item $d(s)$ is the distribution over states.
+        \item $\pi_\theta(a|s)$ is the probability of taking action $a$ in state $s$ under policy parameters $\theta$.
+        \item $R_{s,a}$ is the reward received when taking action $a$ in state $s$.
+    \end{itemize}
+
+    \item \textbf{Taking the Gradient} \\
+    We want to compute the gradient $\nabla_\theta J(\theta)$ so we can improve the policy using gradient ascent.
+    \begin{equation}
+    \nabla_\theta J(\theta) = \sum_{s} d(s) \sum_{a} \nabla_\theta \pi_\theta(a|s) R_{s,a}
+    \end{equation}
+    Note: $d(s)$ and $R_{s,a}$ do not depend on $\theta$, so they are treated as constants.
+
+    \item \textbf{Using the Log Derivative Trick} \\
+    Start with the chain rule. We want the gradient of a log:
+    \[
+    \nabla_\theta \log \pi_\theta(a|s) = \frac{1}{\pi_\theta(a|s)}\nabla_\theta \pi_\theta(a|s)
+    \]
+    Now multiply both sides by $\pi_\theta(a|s)$:
+    \[
+    \pi_\theta(a|s)\nabla_\theta \log \pi_\theta(a|s) = \nabla_\theta \pi_\theta(a|s)
+    \]
+
+    \begin{equation}
+    \nabla_\theta \pi_\theta(a|s) = \pi_\theta(a|s) \nabla_\theta \log \pi_\theta(a|s)
+    \end{equation}
+    Plug this into our gradient:
+    \begin{equation}
+    \nabla_\theta J(\theta) = \sum_{s} d(s) \sum_{a} \pi_\theta(a|s) \nabla_\theta \log \pi_\theta(a|s) R_{s,a}
+    \end{equation}
+
+    \item \textbf{Writing as an Expectation} \\
+    This can now be written as an expectation over samples $(s,a) \sim d(s)\pi_\theta(a|s)$:
+    \begin{equation}
+    \nabla_\theta J(\theta) = \mathbb{E}_{\pi_\theta}\left[ \nabla_\theta \log \pi_\theta(a|s) \cdot r \right]
+    \end{equation}
+\end{enumerate}
+
+\subsubsection*{Interpretation}
+This is the policy gradient formula for a one-step MDP:
+\begin{itemize}
+    \item It tells us to increase the log-probability of actions that result in high reward.
+    \item This is REINFORCE, simplified to the contextual bandit case.
+\end{itemize}
+
+
 \section{Policy Gradients for Multi-Step MDPs }
 
 \subsection{Objective}
@@ -1629,7 +1684,7 @@ A common approach is to use a learned model to generate synthetic data, which is
     \item Limits compounding errors with short horizons.
 \end{itemize}
 
-\subsubsection{Dyna-Q Style Algorithm}
+\subsubsection{Dyna-Q Style Algorithm - MBPO}
 This algorithm uses a model to supplement real-world experience, often in a continuous loop.
 
 \item \textbf{Algorithm:}
