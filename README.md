@@ -6,6 +6,8 @@
 - Feel free to make changes and contribute to the existing one. Motive is to make it more smaller and clearer.
 
 - Please star this Repo if this cheatsheet helped you 🙂
+  
+- If you are a Dal grad student taking DRL course, then this is for you!
 
 <hr>
 
