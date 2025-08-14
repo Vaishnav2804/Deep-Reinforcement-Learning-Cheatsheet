@@ -7,7 +7,7 @@
 
 - Please star this Repo if this cheatsheet helped you 🙂
   
-- If you are a Dal grad student taking DRL course, then this is for you!
+- If you are a Dal grad student taking the Deep Reinforcement Learning course, then this is for you!
 
 <hr>
 
