@@ -44,6 +44,36 @@ Goal: Find the optimal policy $\pi^*(a|s) = \arg\max_\pi \mathbb{E}_\pi [R_{t+1}
 \subsection{Goals and Rewards}
 Rewards define the objective of the problem. A policy's goal is to maximize the expected cumulative discounted rewards over time.
 
+\subsubsection{Reward Hypothesis}
+``Reward Hypothesis'' states that: 
+\begin{quote}
+All goals can be described as the maximization of expected cumulative reward.
+\end{quote}
+
+This foundational perspective frames reinforcement learning as a way to encode objectives through appropriate design of the reward function.
+
+\subsubsection{Reward Representation Strategies}
+Two common approaches for encoding task objectives in RL are:
+\begin{itemize}
+    \item \textbf{Goal-Reward Representation:} 
+    The agent receives a positive signal (e.g., $+1$) only upon successfully reaching the goal state; all other transitions yield zero reward.
+    \begin{itemize}
+        \item \emph{Pros:} Encourages direct focus on achieving the goal.
+        \item \emph{Cons:} Rewards are sparse $\Rightarrow$ learning signal is weak; high probability the agent never stumbles upon the goal during exploration.
+    \end{itemize}
+    
+    \item \textbf{Action-Penalty Representation:} 
+    The agent receives a constant negative penalty (e.g., $-1$) for each non-terminal action, with zero reward at the goal state.
+    \begin{itemize}
+        \item \emph{Pros:} Provides a denser learning signal pushing the agent toward shorter paths.
+        \item \emph{Cons:} Poorly balanced penalties may discourage exploration; in some cases, the agent may prefer early termination or fail to reach the goal at all if penalties outweigh sparse terminal rewards.
+    \end{itemize}
+\end{itemize}
+
+\noindent
+Both schemes highlight the central challenge of reward design: a misspecified objective can lead to ineffective or unintended behavior, despite the reward hypothesis being conceptually sound.
+
+
 \subsection{Discount Rate $\gamma$}
 The discount rate $\gamma$ controls the preference for immediate versus future rewards. A value of $\gamma=0$ results in a myopic agent that only considers immediate rewards, while $\gamma=1$ makes the agent treat all future rewards equally, assuming the task eventually terminates.
 
@@ -54,6 +84,47 @@ The return $G_t$ is the total discounted reward from time step $t$. It is define
     \item For episodic tasks: $G_t = \sum_{k=0}^{T-t-1} \gamma^k R_{t+k+1}$, where $T$ is the terminal time step.
 \end{itemize}
 The return can be expressed recursively as $G_t = R_{t+1} + \gamma G_{t+1}$, with $G_T = 0$.
+
+\subsection*{Why the discounted return $G_t$ is finite in continuing tasks}
+
+\paragraph{1. What are we worried about?}
+The return is an infinite sum:
+\[
+G_t \;=\; R_{t+1} + \gamma R_{t+2} + \gamma^2 R_{t+3} + \cdots
+\]
+Since the task does not terminate, we must ensure this sum does not diverge.
+
+\paragraph{2. Why does discounting help?}
+Each later reward is multiplied by $\gamma^k$. If $0 \le \gamma < 1$, the factors
+$1, \gamma, \gamma^2, \ldots$ shrink to $0$, so later terms contribute less and less.
+
+\paragraph{3. Bounding the rewards}
+Assume rewards are bounded: $\;|R_t| \le R_{\max}\;$ for all $t$.
+
+\paragraph{4. Compare with a simpler ``worst case''}
+If every reward took its largest magnitude $R_{\max}$, then
+\[
+G_t \;\le\; R_{\max}\big(1 + \gamma + \gamma^2 + \gamma^3 + \cdots\big).
+\]
+
+\paragraph{5. Why does the geometric series converge?}
+For $0 \le \gamma < 1$,
+\[
+1 + \gamma + \gamma^2 + \cdots \;=\; \frac{1}{1-\gamma}.
+\]
+If $\gamma = 1$, the terms never shrink, and the sum goes infinite.
+
+\paragraph{6. Therefore}
+\[
+|G_t| \;\le\; \frac{R_{\max}}{1-\gamma},
+\]
+which is finite. Hence the discounted return $G_t$ is finite in continuing tasks.
+
+\paragraph{Intuition.}
+Discounting makes later rewards smaller; bounded rewards prevent any term from
+being too large. Summing many shrinking, bounded terms yields a finite result
+(e.g., $1 + \tfrac12 + \tfrac14 + \cdots = 2$).
+
 
 \subsection{Partially Observable MDP (POMDP)}
 A POMDP is a generalization of an MDP defined as a tuple $\langle \mathcal{S}, \mathcal{A}, \mathcal{O}, P, R, E, \gamma \rangle$, which includes a set of observations $\mathcal{O}$ and an emission probability $E$, defined as $p(o_t \mid s_t)$. In a POMDP, the agent's policy is based on observations, $\pi(a|o)$, rather than states.
