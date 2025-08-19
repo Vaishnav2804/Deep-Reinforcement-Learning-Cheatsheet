@@ -47,7 +47,7 @@ Rewards define the objective of the problem. A policy's goal is to maximize the 
 \subsubsection{Reward Hypothesis}
 ``Reward Hypothesis'' states that: 
 \begin{quote}
-All goals can be described as the maximization of expected cumulative reward.
+``That all of what we mean by goals and purposes can be well thought of as the maximization of the expected value of the cumulative sum of a received scalar signal (called reward)."
 \end{quote}
 
 This foundational perspective frames reinforcement learning as a way to encode objectives through appropriate design of the reward function.
@@ -124,6 +124,80 @@ which is finite. Hence the discounted return $G_t$ is finite in continuing tasks
 Discounting makes later rewards smaller; bounded rewards prevent any term from
 being too large. Summing many shrinking, bounded terms yields a finite result
 (e.g., $1 + \tfrac12 + \tfrac14 + \cdots = 2$).
+
+\subsubsection{Problem \colorbox{yellow}{(Important)}}
+\textbf{Question:} Given a discount factor $\gamma = 0.8$ and a reward sequence where $R_1 = 5$ and $R_t = 10$ for all $t \geq 2$. Find the return from time 0, $G_0$.
+\subsubsection*{Step-by-Step Solution}
+\begin{enumerate}
+    \item \textbf{Define the return formula:}
+    The return from time 0 is given by the discounted sum of all future rewards:
+    $$
+    G_0 = R_1 + \gamma R_2 + \gamma^2 R_3 + \gamma^3 R_4 + \dots
+    $$
+
+    \item \textbf{Substitute the given rewards and discount factor:}
+    $$
+    G_0 = 5 + (0.8)(10) + (0.8)^2(10) + (0.8)^3(10) + \dots
+    $$
+
+    \item \textbf{Separate the first term and factor out the reward from the remaining terms:}
+    $$
+    G_0 = 5 + 10 \left( 0.8 + (0.8)^2 + (0.8)^3 + \dots \right)
+    $$
+    The terms inside the parentheses form a geometric series.
+
+    \item \textbf{Sum the geometric series:}
+    The sum of an infinite geometric series of the form $x + x^2 + x^3 + \dots$ where $|x| < 1$ is $\frac{x}{1-x}$. In this case, $x = 0.8$.
+    $$
+    \text{Sum} = \frac{0.8}{1 - 0.8} = \frac{0.8}{0.2} = 4
+    $$
+
+    \item \textbf{Calculate the total return:}
+    Substitute the sum of the geometric series back into the equation for $G_0$:
+    $$
+    G_0 = 5 + 10 \times 4 = 5 + 40 = 45
+    $$
+\end{enumerate}
+
+\subsubsection{Problem \colorbox{yellow}{(Important)}}
+Given a discount factor $\gamma = 0.8$, a sequence of rewards $R_1 = -3$, $R_2 = 5$, $R_3 = 2$, $R_4 = 7$, and $R_5 = 1$. The terminal time is $T=5$, which means there are no future rewards after time 5, so $G_5 = 0$. Calculate the return from time 0, $G_0$, using the relationship $G_t = R_{t+1} + \gamma G_{t+1}$.
+
+\subsubsection*{Step-by-Step Solution}
+
+\begin{enumerate}
+    \item \textbf{Start from the terminal state and work backward:}
+    The terminal return is given as $G_5 = 0$.
+
+    \item \textbf{Calculate $G_4$:}
+    Using the formula $G_4 = R_5 + \gamma G_5$:
+    $$
+    G_4 = 1 + (0.8)(0) = 1
+    $$
+
+    \item \textbf{Calculate $G_3$:}
+    Using the formula $G_3 = R_4 + \gamma G_4$:
+    $$
+    G_3 = 7 + (0.8)(1) = 7.8
+    $$
+
+    \item \textbf{Calculate $G_2$:}
+    Using the formula $G_2 = R_3 + \gamma G_3$:
+    $$
+    G_2 = 2 + (0.8)(7.8) = 2 + 6.24 = 8.24
+    $$
+
+    \item \textbf{Calculate $G_1$:}
+    Using the formula $G_1 = R_2 + \gamma G_2$:
+    $$
+    G_1 = 5 + (0.8)(8.24) = 5 + 6.592 = 11.592
+    $$
+
+    \item \textbf{Calculate $G_0$:}
+    Using the formula $G_0 = R_1 + \gamma G_1$:
+    $$
+    G_0 = -3 + (0.8)(11.592) = -3 + 9.2736 = 6.2736
+    $$
+\end{enumerate}
 
 
 \subsection{Partially Observable MDP (POMDP)}
